@@ -1,0 +1,32 @@
+<svg width="100%" height="100%" viewBox="248 38 184 184" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>TradeEdge icon</title>
+<g transform="translate(340, 130)">
+  <!-- Circle with subtle dark fill so icon is visible on any background -->
+  <circle cx="0" cy="0" r="82" fill="#0F0F1A" stroke="#00C896" stroke-width="1.5"/>
+
+  <!-- Horizontal resistance/target level line -->
+  <line x1="-62" y1="-10" x2="62" y2="-10" stroke="#1E3A2A" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- Equity curve path -->
+  <path d="M -62,35 L -42,30 L -28,38 L -14,25 L 0,28 L 10,15 L 18,-10 L 28,-32 L 38,-48 L 50,-62" fill="none" stroke="#00C896" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Shaded area under curve -->
+  <path d="M -62,35 L -42,30 L -28,38 L -14,25 L 0,28 L 10,15 L 18,-10 L 28,-32 L 38,-48 L 50,-62 L 50,55 L -62,55 Z" fill="#00C896" opacity="0.08"/>
+
+  <!-- Breakout point dot -->
+  <circle cx="18" cy="-10" r="4" fill="#00C896"/>
+
+  <!-- Glow ring -->
+  <circle cx="18" cy="-10" r="8" fill="none" stroke="#00C896" stroke-width="1" opacity="0.4"/>
+
+  <!-- Tip dot -->
+  <circle cx="50" cy="-62" r="5" fill="#00C896"/>
+
+  <!-- Upward arrow at tip -->
+  <path d="M 44,-70 L 50,-80 L 56,-70" fill="none" stroke="#00C896" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Bottom grid lines -->
+  <line x1="-62" y1="55" x2="62" y2="55" stroke="#1A1A2A" stroke-width="1"/>
+  <line x1="-62" y1="25" x2="-62" y2="55" stroke="#1A1A2A" stroke-width="1"/>
+</g>
+</svg>

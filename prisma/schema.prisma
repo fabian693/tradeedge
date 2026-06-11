@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum Tier {
+  FREE
+  PRO
+}
+
+enum DrawdownType {
+  TRAILING_EOD
+  STATIC
+  DAILY_LOSS
+  CUSTOM
+}
+
+enum Market {
+  NQ
+  ES
+}
+
+enum TradingSession {
+  LONDON
+  NY
+}
+
+enum Direction {
+  LONG
+  SHORT
+}
+
+enum DailyBias {
+  BULLISH
+  BEARISH
+}
+
+enum IFVGTimeframe {
+  M1
+  M2
+  M5
+  M15
+}
+
+enum SetupGrade {
+  A_PLUS
+  A
+  B
+}
+
+enum Confirmation {
+  LIQUIDITY_SWEEP
+  SMT_DIVERGENCE
+  FVG_ALIGNMENT
+}
+
+enum SLType {
+  AGGRESSIVE
+  SAFE
+}
+
+enum TradeResult {
+  WIN
+  LOSS
+  BREAKEVEN
+}
+
+enum RatingType {
+  SELF
+  AI
+}
+
+enum PsychologyProfile {
+  DISCIPLINED
+  DEVELOPING
+  EMOTIONAL
+  HIGH_RISK
+}
+
+enum DailyRecommendation {
+  GO
+  CAUTION
+  NO_GO
+}
+
+enum FollowedRules {
+  YES
+  MOSTLY
+  NO
+}
+
+enum DisciplineGrade {
+  A
+  B
+  C
+  D
+}
+
+enum ChecklistVerdict {
+  A_PLUS
+  B_SETUP
+  DO_NOT_TRADE
+}
+
+enum WeekGrade {
+  A
+  B
+  C
+  D
+}
+
+enum FollowedRoutine {
+  YES
+  MOSTLY
+  NO
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String?
+  name                String
+  googleId            String?   @unique
+  experienceLevel     ExperienceLevel?
+  propFirm            String?
+  accountSize         Float?
+  preferredSession    TradingSession?
+  timezone            String?   @default("UTC")
+  tier                Tier      @default(FREE)
+  isPublicTrader      Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  accounts            Account[]
+  trades              Trade[]
+  psychologyBaseline  PsychologyBaseline?
+  psychologyCheckins  PsychologyCheckin[]
+  psychologyReflections PsychologyReflection[]
+  checklists          Checklist[]
+  weeklyReviews       WeeklyReview[]
+}
+
+model Account {
+  id               String    @id @default(uuid())
+  userId           String
+  name             String
+  propFirmName     String?
+  accountSize      Float
+  startingBalance  Float
+  currentBalance   Float
+  profitTarget     Float?
+  drawdownType     DrawdownType?
+  drawdownValue    Float?
+  dailyLossLimit   Float?
+  consistencyRule  Float?
+  maxContracts     Int?
+  payoutFrequency  String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades           Trade[]
+}
+
+model Trade {
+  id                   String    @id @default(uuid())
+  userId               String
+  accountId            String
+  dateTime             DateTime
+  market               Market
+  session              TradingSession
+  direction            Direction
+  dailyBias            DailyBias
+  ifvgTimeframe        IFVGTimeframe?
+  setupGrade           SetupGrade
+  confirmation1        Confirmation?
+  confirmation2        Confirmation?
+  entryPrice           Float
+  slPrice              Float
+  slType               SLType?
+  tpPrice              Float?
+  contracts            Int       @default(1)
+  rrTarget             Float?
+  exitPrice            Float?
+  result               TradeResult?
+  rrAchieved           Float?
+  pnl                  Float?
+  ruleViolation        Boolean   @default(false)
+  violationDescription String?
+  screenshotUrl        String?
+  wentWell             String?
+  toImprove            String?
+  notes                String?
+  psychologyScore      Int?
+  killzoneConfirmed    Boolean   @default(false)
+  ratingType           RatingType?
+  selfRating           Int?
+  aiRating             Int?
+  aiFeedback           String?
+  isPublic             Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account              Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  reflections          PsychologyReflection[]
+  bestTradeReviews     WeeklyReview[] @relation("BestTrade")
+}
+
+model PsychologyBaseline {
+  id           String            @id @default(uuid())
+  userId       String            @unique
+  scores       Json
+  profileType  PsychologyProfile
+  overallScore Float
+  completedAt  DateTime          @default(now())
+
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PsychologyCheckin {
+  id                 String              @id @default(uuid())
+  userId             String
+  date               DateTime            @db.Date
+  sleepQuality       Int
+  stressLevel        Int
+  confidence         Int
+  financialPressure  Int
+  focus              Int
+  emotionalStability Int
+  readiness          Int
+  overallScore       Float
+  recommendation     DailyRecommendation
+  createdAt          DateTime            @default(now())
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+}
+
+model PsychologyReflection {
+  id              String          @id @default(uuid())
+  userId          String
+  tradeId         String?
+  date            DateTime        @db.Date
+  followedRules   FollowedRules
+  feltEmotional   Boolean         @default(false)
+  revengeTrade    Boolean         @default(false)
+  overtraded      Boolean         @default(false)
+  disciplineGrade DisciplineGrade
+  wentWell        String?
+  toImprove       String?
+  createdAt       DateTime        @default(now())
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade           Trade?          @relation(fields: [tradeId], references: [id], onDelete: SetNull)
+}
+
+model Checklist {
+  id                    String           @id @default(uuid())
+  userId                String
+  date                  DateTime         @db.Date
+  session               TradingSession
+  dailyBiasSet          Boolean          @default(false)
+  sessionHighsLowsMarked Boolean         @default(false)
+  premiumDiscountSet    Boolean          @default(false)
+  prepCompleted         Boolean          @default(false)
+  htLtReviewed          Boolean          @default(false)
+  calendarChecked       Boolean          @default(false)
+  killzoneSelected      Boolean          @default(false)
+  ifvgIdentified        Boolean          @default(false)
+  cleanCloseConfirmed   Boolean          @default(false)
+  confirmation1         Boolean          @default(false)
+  confirmation2         Boolean          @default(false)
+  bothAlign             Boolean          @default(false)
+  rrConfirmed           Boolean          @default(false)
+  consistencyChecked    Boolean          @default(false)
+  dailyTargetChecked    Boolean          @default(false)
+  slDecided             Boolean          @default(false)
+  tpSet                 Boolean          @default(false)
+  contractsChecked      Boolean          @default(false)
+  verdict               ChecklistVerdict?
+  createdAt             DateTime         @default(now())
+
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, session])
+}
+
+model WeeklyReview {
+  id                 String          @id @default(uuid())
+  userId             String
+  weekStartDate      DateTime        @db.Date
+  totalTrades        Int             @default(0)
+  winRate            Float           @default(0)
+  avgRr              Float           @default(0)
+  totalPnl           Float           @default(0)
+  avgPsychologyScore Float           @default(0)
+  ruleViolations     Int             @default(0)
+  bestTradeId        String?
+  worstDecision      String?
+  whatWorked         String?
+  whatToImprove      String?
+  followedRoutine    FollowedRoutine?
+  disciplineGrade    DisciplineGrade?
+  nextWeekGoal       String?
+  weekGrade          WeekGrade?
+  createdAt          DateTime        @default(now())
+
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bestTrade          Trade?          @relation("BestTrade", fields: [bestTradeId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, weekStartDate])
+}
