@@ -38,7 +38,7 @@ export function useWinRateBySession(accountId) {
     queryKey: ['analytics', 'by-session', accountId],
     queryFn: async () => {
       const { data } = await api.get(`/analytics/by-session?${buildParams(accountId)}`)
-      return data?.bySession ?? data ?? []
+      return data?.data ?? data?.bySession ?? []
     },
   })
 }
@@ -48,7 +48,7 @@ export function useWinRateByConfirmation(accountId) {
     queryKey: ['analytics', 'by-confirmation', accountId],
     queryFn: async () => {
       const { data } = await api.get(`/analytics/by-confirmation?${buildParams(accountId)}`)
-      return data?.byConfirmation ?? data ?? []
+      return data?.data ?? data?.byConfirmation ?? []
     },
   })
 }
@@ -58,7 +58,7 @@ export function useWinRateByMarket(accountId) {
     queryKey: ['analytics', 'by-market', accountId],
     queryFn: async () => {
       const { data } = await api.get(`/analytics/by-market?${buildParams(accountId)}`)
-      return data?.byMarket ?? data ?? []
+      return data?.data ?? data?.byMarket ?? []
     },
   })
 }
@@ -68,7 +68,7 @@ export function useWinRateByGrade(accountId) {
     queryKey: ['analytics', 'by-grade', accountId],
     queryFn: async () => {
       const { data } = await api.get(`/analytics/by-grade?${buildParams(accountId)}`)
-      return data?.byGrade ?? data ?? []
+      return data?.data ?? data?.byGrade ?? []
     },
   })
 }
@@ -78,7 +78,7 @@ export function usePsychologyCorrelation(accountId) {
     queryKey: ['analytics', 'psych-correlation', accountId],
     queryFn: async () => {
       const { data } = await api.get(`/analytics/psychology-correlation?${buildParams(accountId)}`)
-      return data?.correlation ?? data ?? []
+      return data?.points ?? data?.correlation ?? []
     },
   })
 }
