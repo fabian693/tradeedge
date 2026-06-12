@@ -793,7 +793,14 @@ function ImportCsvModal({ open, onClose, accounts }) {
         toast.error(`Skipped ${data.skipped} row${data.skipped !== 1 ? 's' : ''}.`)
       }
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'Failed to import CSV.')
+      if (err?.response) {
+        const apiError = err.response.data?.errors?.[0]?.msg || err.response.data?.error
+        toast.error(apiError || `Failed to import CSV (${err.response.status}).`)
+      } else if (err?.request) {
+        toast.error('No response from server — it may be waking up (free tier), please try again in ~30s.')
+      } else {
+        toast.error(err?.message || 'Failed to import CSV.')
+      }
     }
   }
 
