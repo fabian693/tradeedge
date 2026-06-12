@@ -223,10 +223,60 @@ function Phase({ title, phase, items, state, onChange, complete, total }) {
   )
 }
 
+const CHECKLIST_STORAGE_KEY = 'tradeedge_checklist_state'
+
+function getTodayKey() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function loadStoredState() {
+  try {
+    const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    if (parsed?.date === getTodayKey()) {
+      return parsed.state ?? {}
+    }
+    // New day — discard yesterday's checklist
+    localStorage.removeItem(CHECKLIST_STORAGE_KEY)
+    return {}
+  } catch {
+    return {}
+  }
+}
+
 export default function ChecklistPage() {
   const { data: accounts } = useAccounts()
-  const [state, setState] = useState({})
+  const [state, setState] = useState(loadStoredState)
   const [saving, setSaving] = useState(false)
+  const [checklistDate, setChecklistDate] = useState(getTodayKey)
+
+  // Persist state for the current day, and watch for the date rolling over
+  // (e.g. tab left open past midnight) so the checklist resets automatically.
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify({ date: getTodayKey(), state }))
+    } catch {
+      // ignore storage errors (e.g. private browsing)
+    }
+  }, [state])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const todayKey = getTodayKey()
+      if (todayKey !== checklistDate) {
+        setChecklistDate(todayKey)
+        setState({})
+        try {
+          localStorage.removeItem(CHECKLIST_STORAGE_KEY)
+        } catch {
+          // ignore
+        }
+      }
+    }, 60 * 1000)
+    return () => clearInterval(interval)
+  }, [checklistDate])
 
   // Auto-populate account-based checks
   useEffect(() => {

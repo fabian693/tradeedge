@@ -40,6 +40,19 @@ function BarTooltip({ active, payload, label, formatter }) {
   )
 }
 
+const RADIAN = Math.PI / 180
+function renderPieLabel({ cx, cy, midAngle, innerRadius, outerRadius, value }) {
+  if (!value) return null
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5
+  const x = cx + radius * Math.cos(-midAngle * RADIAN)
+  const y = cy + radius * Math.sin(-midAngle * RADIAN)
+  return (
+    <text x={x} y={y} fill="#FFFFFF" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight={600}>
+      {`${value}%`}
+    </text>
+  )
+}
+
 function PulseDot({ cx, cy }) {
   return (
     <g>
@@ -226,13 +239,16 @@ export default function AnalyticsPage() {
                         paddingAngle={3}
                         dataKey="value"
                         stroke="none"
-                        label={({ value }) => `${value}%`}
+                        label={renderPieLabel}
                         labelLine={false}
-                        style={{ fontSize: 11, fontWeight: 600, fill: '#FFFFFF' }}
                       >
                         {marketData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                       </Pie>
-                      <Legend formatter={(v) => <span style={{ color: '#8888AA', fontSize: 12 }}>{v}</span>} />
+                      <Legend
+                        verticalAlign="bottom"
+                        height={24}
+                        formatter={(v) => <span style={{ color: '#8888AA', fontSize: 12 }}>{v}</span>}
+                      />
                       <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [`${v}%`, 'Win Rate']} />
                     </PieChart>
                   </ResponsiveContainer>
