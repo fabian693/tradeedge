@@ -33,10 +33,10 @@ const tradeSchema = z.object({
   direction: z.enum(['Long', 'Short']),
   dailyBias: z.enum(['Bullish', 'Bearish']),
   killzoneConfirmed: z.enum(['Yes', 'No']),
-  ifvgTimeframe: z.enum(['1min', '2min', '5min', '15min']),
+  ifvgTimeframe: z.enum(['None', '1min', '2min', '5min', '15min']),
   setupGrade: z.enum(['A+', 'A', 'B']),
-  confirmation1: z.enum(['Liquidity Sweep', 'SMT Divergence', 'FVG Alignment']),
-  confirmation2: z.enum(['Liquidity Sweep', 'SMT Divergence', 'FVG Alignment']),
+  confirmation1: z.enum(['None', 'Liquidity Sweep', 'SMT Divergence', 'FVG Alignment']),
+  confirmation2: z.enum(['None', 'Liquidity Sweep', 'SMT Divergence', 'FVG Alignment']),
   entryPrice: z.coerce.number(),
   stopLoss: z.coerce.number(),
   stopLossType: z.enum(['Aggressive', 'Safe']),
@@ -83,11 +83,12 @@ const SESSION_FROM_API = { LONDON: 'London', NY: 'NY' }
 const DIRECTION_TO_API = { Long: 'LONG', Short: 'SHORT' }
 const DIRECTION_FROM_API = { LONG: 'Long', SHORT: 'Short' }
 const BIAS_TO_API = { Bullish: 'BULLISH', Bearish: 'BEARISH' }
-const IFVG_TO_API = { '1min': 'M1', '2min': 'M2', '5min': 'M5', '15min': 'M15' }
+const IFVG_TO_API = { None: undefined, '1min': 'M1', '2min': 'M2', '5min': 'M5', '15min': 'M15' }
 const IFVG_FROM_API = { M1: '1min', M2: '2min', M5: '5min', M15: '15min' }
 const SETUP_TO_API = { 'A+': 'A_PLUS', A: 'A', B: 'B' }
 const SETUP_FROM_API = { A_PLUS: 'A+', A: 'A', B: 'B' }
 const CONFIRM_TO_API = {
+  None: undefined,
   'Liquidity Sweep': 'LIQUIDITY_SWEEP',
   'SMT Divergence': 'SMT_DIVERGENCE',
   'FVG Alignment': 'FVG_ALIGNMENT',
@@ -116,10 +117,10 @@ function mapFormToApiPayload(values) {
     session: SESSION_TO_API[values.session] ?? values.session,
     direction: DIRECTION_TO_API[values.direction] ?? values.direction,
     dailyBias: BIAS_TO_API[values.dailyBias] ?? values.dailyBias,
-    ifvgTimeframe: IFVG_TO_API[values.ifvgTimeframe] ?? values.ifvgTimeframe,
+    ifvgTimeframe: values.ifvgTimeframe === 'None' ? undefined : (IFVG_TO_API[values.ifvgTimeframe] ?? values.ifvgTimeframe),
     setupGrade: SETUP_TO_API[values.setupGrade] ?? values.setupGrade,
-    confirmation1: CONFIRM_TO_API[values.confirmation1] ?? values.confirmation1,
-    confirmation2: CONFIRM_TO_API[values.confirmation2] ?? values.confirmation2,
+    confirmation1: values.confirmation1 === 'None' ? undefined : (CONFIRM_TO_API[values.confirmation1] ?? values.confirmation1),
+    confirmation2: values.confirmation2 === 'None' ? undefined : (CONFIRM_TO_API[values.confirmation2] ?? values.confirmation2),
     entryPrice: values.entryPrice,
     slPrice: values.stopLoss,
     slType: SLTYPE_TO_API[values.stopLossType] ?? values.stopLossType,
@@ -309,8 +310,8 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
     resolver: zodResolver(tradeSchema),
     defaultValues: {
       market: 'NQ', session: 'NY', direction: 'Long', dailyBias: 'Bullish',
-      killzoneConfirmed: 'Yes', ifvgTimeframe: '2min', setupGrade: 'A',
-      confirmation1: 'Liquidity Sweep', confirmation2: 'FVG Alignment',
+      killzoneConfirmed: 'Yes', ifvgTimeframe: 'None', setupGrade: 'A',
+      confirmation1: 'None', confirmation2: 'None',
       stopLossType: 'Safe', result: 'Win', ruleViolation: 'No',
       contracts: 1,
       isPublic: false,
@@ -443,25 +444,28 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
         {step === 2 && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Select label="IFVG Timeframe" {...register('ifvgTimeframe')}>
-                <option value="1min">1 min</option>
-                <option value="2min">2 min</option>
-                <option value="5min">5 min</option>
-                <option value="15min">15 min</option>
-              </Select>
               <Select label="Setup Grade" {...register('setupGrade')}>
                 <option value="A+">A+</option>
                 <option value="A">A</option>
                 <option value="B">B</option>
               </Select>
+              <Select label="IFVG Confirmation (optional)" {...register('ifvgTimeframe')}>
+                <option value="None">None</option>
+                <option value="1min">1 min</option>
+                <option value="2min">2 min</option>
+                <option value="5min">5 min</option>
+                <option value="15min">15 min</option>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Select label="Confirmation 1" {...register('confirmation1')}>
+              <Select label="Confirmation 1 (optional)" {...register('confirmation1')}>
+                <option value="None">None</option>
                 <option value="Liquidity Sweep">Liquidity Sweep</option>
                 <option value="SMT Divergence">SMT Divergence</option>
                 <option value="FVG Alignment">FVG Alignment</option>
               </Select>
-              <Select label="Confirmation 2" {...register('confirmation2')}>
+              <Select label="Confirmation 2 (optional)" {...register('confirmation2')}>
+                <option value="None">None</option>
                 <option value="Liquidity Sweep">Liquidity Sweep</option>
                 <option value="SMT Divergence">SMT Divergence</option>
                 <option value="FVG Alignment">FVG Alignment</option>
@@ -562,7 +566,7 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
 
             {/* Screenshot drop zone */}
             <div>
-              <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">Screenshot</label>
+              <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">Screenshot (optional)</label>
               {screenshot ? (
                 <div className="space-y-2">
                   <div className="relative">
