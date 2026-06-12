@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
   LineChart, Line, ReferenceLine, PieChart, Pie, Legend,
-  ScatterChart, Scatter, ZAxis,
+  ScatterChart, Scatter, ZAxis, LabelList,
 } from 'recharts'
 import { Award, AlertCircle } from 'lucide-react'
 import {
@@ -20,7 +20,10 @@ import { formatCurrency } from '../../lib/utils'
 const TOOLTIP_STYLE = {
   contentStyle: { background: '#12121A', border: '1px solid #2A2A3A', borderRadius: 12, fontSize: 12 },
   labelStyle: { color: '#8888AA' },
+  itemStyle: { color: '#FFFFFF' },
 }
+
+const PCT_LABEL = { fill: '#FFFFFF', fontSize: 11, fontWeight: 600 }
 
 const SESSION_LABELS = { LONDON: 'London', NY: 'NY' }
 const GRADE_LABELS = { A_PLUS: 'A+', A: 'A', B: 'B' }
@@ -188,15 +191,16 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="h-44">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sessionData} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3A" />
+                    <BarChart data={sessionData} margin={{ top: 16, right: 16, left: -30, bottom: 0 }} barCategoryGap="35%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3A" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#8888AA', fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fill: '#8888AA', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<BarTooltip formatter={(v) => `${v}%`} />} />
-                      <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
+                      <Tooltip content={<BarTooltip formatter={(v) => `${v}%`} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                      <Bar dataKey="winRate" radius={[6, 6, 0, 0]} maxBarSize={64}>
                         {sessionData.map((d, i) => (
                           <Cell key={i} fill={d.winRate >= 50 ? '#00C896' : '#F5A623'} />
                         ))}
+                        <LabelList dataKey="winRate" position="top" formatter={(v) => `${v}%`} style={PCT_LABEL} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -213,7 +217,19 @@ export default function AnalyticsPage() {
                 <div className="h-44">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={marketData} cx="50%" cy="50%" innerRadius={45} outerRadius={68} paddingAngle={3} dataKey="value">
+                      <Pie
+                        data={marketData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={68}
+                        paddingAngle={3}
+                        dataKey="value"
+                        stroke="none"
+                        label={({ value }) => `${value}%`}
+                        labelLine={false}
+                        style={{ fontSize: 11, fontWeight: 600, fill: '#FFFFFF' }}
+                      >
                         {marketData.map((d, i) => <Cell key={i} fill={d.fill} />)}
                       </Pie>
                       <Legend formatter={(v) => <span style={{ color: '#8888AA', fontSize: 12 }}>{v}</span>} />
@@ -232,12 +248,14 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="h-44">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={gradeData} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3A" />
+                    <BarChart data={gradeData} margin={{ top: 16, right: 16, left: -30, bottom: 0 }} barCategoryGap="35%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3A" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#8888AA', fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fill: '#8888AA', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<BarTooltip formatter={(v) => `${v}%`} />} />
-                      <Bar dataKey="winRate" fill="#00C896" radius={[4, 4, 0, 0]} />
+                      <Tooltip content={<BarTooltip formatter={(v) => `${v}%`} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                      <Bar dataKey="winRate" fill="#00C896" radius={[6, 6, 0, 0]} maxBarSize={64}>
+                        <LabelList dataKey="winRate" position="top" formatter={(v) => `${v}%`} style={PCT_LABEL} />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -252,12 +270,14 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="h-44">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={sessionData} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3A" />
+                    <BarChart data={sessionData} margin={{ top: 16, right: 16, left: -30, bottom: 0 }} barCategoryGap="35%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3A" vertical={false} />
                       <XAxis dataKey="label" tick={{ fill: '#8888AA', fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: '#8888AA', fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<BarTooltip formatter={(v) => `${v.toFixed(2)}R`} />} />
-                      <Bar dataKey="avgRr" fill="#F5A623" radius={[4, 4, 0, 0]} />
+                      <Tooltip content={<BarTooltip formatter={(v) => `${v.toFixed(2)}R`} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                      <Bar dataKey="avgRr" fill="#F5A623" radius={[6, 6, 0, 0]} maxBarSize={64}>
+                        <LabelList dataKey="avgRr" position="top" formatter={(v) => `${v.toFixed(2)}R`} style={PCT_LABEL} />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -271,15 +291,16 @@ export default function AnalyticsPage() {
               <CardHeader><CardTitle>Win Rate by Confirmation Combo (Top 5)</CardTitle></CardHeader>
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topCombos} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3A" />
+                  <BarChart data={topCombos} margin={{ top: 16, right: 16, left: -30, bottom: 0 }} barCategoryGap="35%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2A2A3A" vertical={false} />
                     <XAxis dataKey="combo" tick={{ fill: '#8888AA', fontSize: 10 }} axisLine={false} tickLine={false} />
                     <YAxis domain={[0, 100]} tick={{ fill: '#8888AA', fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<BarTooltip formatter={(v) => `${v}%`} />} />
-                    <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
+                    <Tooltip content={<BarTooltip formatter={(v) => `${v}%`} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                    <Bar dataKey="winRate" radius={[6, 6, 0, 0]} maxBarSize={64}>
                       {topCombos.map((d, i) => (
                         <Cell key={i} fill={d.winRate >= 60 ? '#00C896' : d.winRate >= 45 ? '#F5A623' : '#E74C3C'} />
                       ))}
+                      <LabelList dataKey="winRate" position="top" formatter={(v) => `${v}%`} style={PCT_LABEL} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -329,6 +350,8 @@ export default function AnalyticsPage() {
                     <ZAxis range={[60, 60]} />
                     <Tooltip
                       contentStyle={{ background: '#12121A', border: '1px solid #2A2A3A', borderRadius: 12, fontSize: 12 }}
+                      labelStyle={{ color: '#8888AA' }}
+                      itemStyle={{ color: '#FFFFFF' }}
                       formatter={(v, name) => [name === 'R-Multiple' ? `${v.toFixed(2)}R` : v, name]}
                     />
                     <ReferenceLine y={0} stroke="#8888AA" strokeDasharray="4 4" />
