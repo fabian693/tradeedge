@@ -279,8 +279,9 @@ export default function AccountsPage() {
       toast.success('Account created!')
       setShowAdd(false)
       reset()
-    } catch {
-      toast.error('Failed to create account.')
+    } catch (err) {
+      const apiError = err?.response?.data?.errors?.[0]?.msg || err?.response?.data?.error
+      toast.error(apiError || 'Failed to create account.')
     }
   }
 
