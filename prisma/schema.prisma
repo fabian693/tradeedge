@@ -26,6 +26,11 @@ enum DrawdownType {
   CUSTOM
 }
 
+enum AccountType {
+  LIVE
+  BACKTEST
+}
+
 enum Market {
   NQ
   ES
@@ -152,13 +157,14 @@ model User {
 }
 
 model Account {
-  id               String    @id @default(uuid())
+  id               String      @id @default(uuid())
   userId           String
   name             String
+  accountType      AccountType @default(LIVE)
   propFirmName     String?
-  accountSize      Float
-  startingBalance  Float
-  currentBalance   Float
+  accountSize      Float       @default(0)
+  startingBalance  Float       @default(0)
+  currentBalance   Float       @default(0)
   profitTarget     Float?
   drawdownType     DrawdownType?
   drawdownValue    Float?
@@ -167,7 +173,7 @@ model Account {
   maxContracts     Int?
   payoutFrequency  String?
   notes            String?
-  createdAt        DateTime  @default(now())
+  createdAt        DateTime    @default(now())
 
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   trades           Trade[]

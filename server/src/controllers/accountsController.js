@@ -22,6 +22,7 @@ async function createAccount(req, res, next) {
   try {
     const {
       name,
+      accountType,
       propFirmName,
       accountSize,
       startingBalance,
@@ -36,21 +37,24 @@ async function createAccount(req, res, next) {
       notes,
     } = req.body;
 
+    const isBacktest = accountType === 'BACKTEST';
+
     const account = await prisma.account.create({
       data: {
         userId: req.user.id,
         name,
-        propFirmName,
-        accountSize: Number(accountSize),
-        startingBalance: Number(startingBalance),
-        currentBalance: currentBalance != null ? Number(currentBalance) : Number(startingBalance),
-        profitTarget: profitTarget != null ? Number(profitTarget) : undefined,
-        drawdownType,
-        drawdownValue: drawdownValue != null ? Number(drawdownValue) : undefined,
-        dailyLossLimit: dailyLossLimit != null ? Number(dailyLossLimit) : undefined,
-        consistencyRule: consistencyRule != null ? Number(consistencyRule) : undefined,
-        maxContracts: maxContracts != null ? Number(maxContracts) : undefined,
-        payoutFrequency,
+        accountType: isBacktest ? 'BACKTEST' : 'LIVE',
+        propFirmName: isBacktest ? undefined : propFirmName,
+        accountSize: accountSize != null ? Number(accountSize) : 0,
+        startingBalance: startingBalance != null ? Number(startingBalance) : 0,
+        currentBalance: currentBalance != null ? Number(currentBalance) : Number(startingBalance ?? 0),
+        profitTarget: !isBacktest && profitTarget != null ? Number(profitTarget) : undefined,
+        drawdownType: isBacktest ? undefined : drawdownType,
+        drawdownValue: !isBacktest && drawdownValue != null ? Number(drawdownValue) : undefined,
+        dailyLossLimit: !isBacktest && dailyLossLimit != null ? Number(dailyLossLimit) : undefined,
+        consistencyRule: !isBacktest && consistencyRule != null ? Number(consistencyRule) : undefined,
+        maxContracts: !isBacktest && maxContracts != null ? Number(maxContracts) : undefined,
+        payoutFrequency: isBacktest ? undefined : payoutFrequency,
         notes,
       },
     });
@@ -125,6 +129,7 @@ async function updateAccount(req, res, next) {
 
     const {
       name,
+      accountType,
       propFirmName,
       accountSize,
       startingBalance,
@@ -143,6 +148,7 @@ async function updateAccount(req, res, next) {
       where: { id: req.params.id },
       data: {
         ...(name !== undefined && { name }),
+        ...(accountType !== undefined && { accountType }),
         ...(propFirmName !== undefined && { propFirmName }),
         ...(accountSize !== undefined && { accountSize: Number(accountSize) }),
         ...(startingBalance !== undefined && { startingBalance: Number(startingBalance) }),

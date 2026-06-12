@@ -18,21 +18,31 @@ import { ProgressBar } from '../../components/shared/ProgressBar'
 import { LoadingSpinner } from '../../components/shared/LoadingSpinner'
 import { formatCurrency, formatPercent } from '../../lib/utils'
 
-const accountSchema = z.object({
-  name: z.string().min(1, 'Name required'),
-  propFirm: z.string().optional(),
-  accountSize: z.coerce.number().positive('Must be positive'),
-  startingBalance: z.coerce.number().positive('Must be positive'),
-  currentBalance: z.coerce.number().positive('Must be positive'),
-  profitTarget: z.coerce.number().positive('Must be positive'),
-  maxDrawdownType: z.enum(['Trailing EOD', 'Static', 'Daily Loss Limit', 'Custom']),
-  maxDrawdownValue: z.coerce.number().positive('Must be positive'),
-  dailyLossLimit: z.coerce.number().optional(),
-  consistencyRule: z.coerce.number().optional(),
-  maxContracts: z.coerce.number().int().positive().optional(),
-  payoutFrequency: z.enum(['Daily', 'Weekly', 'Every 5 days', 'Monthly']),
-  notes: z.string().optional(),
-})
+const accountSchema = z.discriminatedUnion('accountType', [
+  z.object({
+    accountType: z.literal('BACKTEST'),
+    name: z.string().min(1, 'Name required'),
+    startingBalance: z.coerce.number().optional(),
+    currentBalance: z.coerce.number().optional(),
+    notes: z.string().optional(),
+  }),
+  z.object({
+    accountType: z.literal('LIVE'),
+    name: z.string().min(1, 'Name required'),
+    propFirm: z.string().optional(),
+    accountSize: z.coerce.number().positive('Must be positive'),
+    startingBalance: z.coerce.number().positive('Must be positive'),
+    currentBalance: z.coerce.number().positive('Must be positive'),
+    profitTarget: z.coerce.number().positive('Must be positive'),
+    maxDrawdownType: z.enum(['Trailing EOD', 'Static', 'Daily Loss Limit', 'Custom']),
+    maxDrawdownValue: z.coerce.number().positive('Must be positive'),
+    dailyLossLimit: z.coerce.number().optional(),
+    consistencyRule: z.coerce.number().optional(),
+    maxContracts: z.coerce.number().int().positive().optional(),
+    payoutFrequency: z.enum(['Daily', 'Weekly', 'Every 5 days', 'Monthly']),
+    notes: z.string().optional(),
+  }),
+])
 
 function getDrawdownColor(pct) {
   if (pct >= 60) return 'bg-accent'
@@ -43,11 +53,12 @@ function getDrawdownColor(pct) {
 function AccountDetailModal({ account, onClose, trades }) {
   const updateAccount = useUpdateAccount()
   const [editing, setEditing] = useState(false)
+  const isBacktest = account.accountType === 'BACKTEST'
 
-  const pnl = account.currentBalance - account.startingBalance
-  const profitPct = ((pnl / account.profitTarget) * 100)
-  const drawdownUsed = account.startingBalance - account.currentBalance
-  const drawdownPct = 100 - ((drawdownUsed / account.maxDrawdownValue) * 100)
+  const pnl = (account.currentBalance ?? 0) - (account.startingBalance ?? 0)
+  const profitPct = account.profitTarget ? ((pnl / account.profitTarget) * 100) : 0
+  const drawdownUsed = (account.startingBalance ?? 0) - (account.currentBalance ?? 0)
+  const drawdownPct = account.maxDrawdownValue ? (100 - ((drawdownUsed / account.maxDrawdownValue) * 100)) : 0
   const cappedDrawdown = Math.max(0, Math.min(100, drawdownPct))
 
   // Projected completion
@@ -55,11 +66,11 @@ function AccountDetailModal({ account, onClose, trades }) {
   const avgDailyPnl = tradesForAccount.length > 0
     ? pnl / Math.max(1, differenceInDays(new Date(), new Date(account.createdAt ?? Date.now())))
     : 0
-  const remainingProfit = account.profitTarget - pnl
-  const daysToTarget = avgDailyPnl > 0 ? Math.ceil(remainingProfit / avgDailyPnl) : null
+  const remainingProfit = (account.profitTarget ?? 0) - pnl
+  const daysToTarget = !isBacktest && account.profitTarget && avgDailyPnl > 0 ? Math.ceil(remainingProfit / avgDailyPnl) : null
   const projectedDate = daysToTarget ? format(addDays(new Date(), daysToTarget), 'MMM d, yyyy') : null
 
-  const dailyCap = account.profitTarget * 0.2
+  const dailyCap = (account.profitTarget ?? 0) * 0.2
 
   return (
     <Modal open onClose={onClose} title={account.name} size="lg">
@@ -79,23 +90,25 @@ function AccountDetailModal({ account, onClose, trades }) {
         </div>
 
         {/* Progress bars */}
-        <div className="space-y-4">
-          <ProgressBar
-            label={`Profit Target (${formatCurrency(account.profitTarget)})`}
-            value={Math.max(0, profitPct)}
-            max={100}
-            color="bg-accent"
-            showLabel
-          />
-          <ProgressBar
-            label={`Drawdown Remaining (${formatCurrency(account.maxDrawdownValue - drawdownUsed)} of ${formatCurrency(account.maxDrawdownValue)})`}
-            value={cappedDrawdown}
-            max={100}
-            color={getDrawdownColor(cappedDrawdown)}
-            colorAuto={false}
-            showLabel
-          />
-        </div>
+        {!isBacktest && (
+          <div className="space-y-4">
+            <ProgressBar
+              label={`Profit Target (${formatCurrency(account.profitTarget)})`}
+              value={Math.max(0, profitPct)}
+              max={100}
+              color="bg-accent"
+              showLabel
+            />
+            <ProgressBar
+              label={`Drawdown Remaining (${formatCurrency((account.maxDrawdownValue ?? 0) - drawdownUsed)} of ${formatCurrency(account.maxDrawdownValue ?? 0)})`}
+              value={cappedDrawdown}
+              max={100}
+              color={getDrawdownColor(cappedDrawdown)}
+              colorAuto={false}
+              showLabel
+            />
+          </div>
+        )}
 
         {/* Stats grid */}
         <div className="grid grid-cols-3 gap-3">
@@ -120,17 +133,19 @@ function AccountDetailModal({ account, onClose, trades }) {
         )}
 
         {/* Daily cap warning */}
-        <div className={`rounded-xl p-4 ${pnl > dailyCap ? 'bg-warning/10 border border-warning/30' : 'bg-surface2'}`}>
-          <div className="flex items-center gap-2">
-            {pnl > dailyCap && <AlertTriangle className="w-4 h-4 text-warning shrink-0" />}
-            <p className="text-sm text-primary">
-              Daily profit cap recommendation: <span className="font-mono font-bold text-accent">{formatCurrency(dailyCap)}</span>
-            </p>
+        {!isBacktest && (
+          <div className={`rounded-xl p-4 ${pnl > dailyCap ? 'bg-warning/10 border border-warning/30' : 'bg-surface2'}`}>
+            <div className="flex items-center gap-2">
+              {pnl > dailyCap && <AlertTriangle className="w-4 h-4 text-warning shrink-0" />}
+              <p className="text-sm text-primary">
+                Daily profit cap recommendation: <span className="font-mono font-bold text-accent">{formatCurrency(dailyCap)}</span>
+              </p>
+            </div>
+            {pnl > dailyCap && (
+              <p className="text-xs text-warning mt-1">You have exceeded the recommended daily cap. Consider stopping for today.</p>
+            )}
           </div>
-          {pnl > dailyCap && (
-            <p className="text-xs text-warning mt-1">You have exceeded the recommended daily cap. Consider stopping for today.</p>
-          )}
-        </div>
+        )}
 
         {/* Recent trades */}
         {tradesForAccount.length > 0 && (
@@ -164,11 +179,12 @@ function AccountDetailModal({ account, onClose, trades }) {
 }
 
 function AccountCard({ account, onClick }) {
-  const pnl = account.currentBalance - account.startingBalance
-  const profitPct = Math.max(0, Math.min(100, (pnl / Math.max(1, account.profitTarget)) * 100))
-  const drawdownUsed = Math.max(0, account.startingBalance - account.currentBalance)
-  const drawdownRemaining = Math.max(0, account.maxDrawdownValue - drawdownUsed)
-  const drawdownPct = (drawdownRemaining / Math.max(1, account.maxDrawdownValue)) * 100
+  const isBacktest = account.accountType === 'BACKTEST'
+  const pnl = (account.currentBalance ?? 0) - (account.startingBalance ?? 0)
+  const profitPct = Math.max(0, Math.min(100, (pnl / Math.max(1, account.profitTarget || 0)) * 100))
+  const drawdownUsed = Math.max(0, (account.startingBalance ?? 0) - (account.currentBalance ?? 0))
+  const drawdownRemaining = Math.max(0, (account.maxDrawdownValue || 0) - drawdownUsed)
+  const drawdownPct = (drawdownRemaining / Math.max(1, account.maxDrawdownValue || 0)) * 100
 
   return (
     <Card
@@ -182,38 +198,45 @@ function AccountCard({ account, onClick }) {
           </div>
           <div>
             <p className="font-semibold text-primary">{account.name}</p>
-            <p className="text-xs text-secondary">{account.propFirm ?? account.broker ?? 'Self-managed'}</p>
+            <p className="text-xs text-secondary">
+              {isBacktest ? 'Backtest' : (account.propFirmName ?? account.propFirm ?? account.broker ?? 'Self-managed')}
+            </p>
           </div>
         </div>
-        <Badge variant={pnl >= 0 ? 'green' : 'red'}>
-          {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
-        </Badge>
+        <div className="flex flex-col items-end gap-1.5">
+          {isBacktest && <Badge variant="gray">Backtest</Badge>}
+          <Badge variant={pnl >= 0 ? 'green' : 'red'}>
+            {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
+          </Badge>
+        </div>
       </div>
 
       <p className="text-3xl font-mono font-bold text-primary mb-4">
         {formatCurrency(account.currentBalance)}
       </p>
 
-      <div className="space-y-3">
-        <ProgressBar
-          label={`Profit Target — ${formatCurrency(account.profitTarget)}`}
-          value={profitPct}
-          max={100}
-          color="bg-accent"
-          colorAuto={false}
-          size="sm"
-        />
-        <ProgressBar
-          label={`Drawdown Remaining — ${formatCurrency(drawdownRemaining)}`}
-          value={drawdownPct}
-          max={100}
-          color={getDrawdownColor(drawdownPct)}
-          colorAuto={false}
-          size="sm"
-        />
-      </div>
+      {isBacktest ? null : (
+        <div className="space-y-3">
+          <ProgressBar
+            label={`Profit Target — ${formatCurrency(account.profitTarget)}`}
+            value={profitPct}
+            max={100}
+            color="bg-accent"
+            colorAuto={false}
+            size="sm"
+          />
+          <ProgressBar
+            label={`Drawdown Remaining — ${formatCurrency(drawdownRemaining)}`}
+            value={drawdownPct}
+            max={100}
+            color={getDrawdownColor(drawdownPct)}
+            colorAuto={false}
+            size="sm"
+          />
+        </div>
+      )}
 
-      {account.consistencyRule && (
+      {!isBacktest && account.consistencyRule && (
         <div className="mt-3 pt-3 border-t border-border">
           <p className="text-xs text-secondary">Consistency Rule: max <span className="text-primary font-mono">{account.consistencyRule}%</span> per day</p>
         </div>
@@ -236,14 +259,19 @@ export default function AccountsPage() {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(accountSchema),
     defaultValues: {
+      accountType: 'LIVE',
       maxDrawdownType: 'Static',
       payoutFrequency: 'Monthly',
     },
   })
+
+  const accountType = watch('accountType')
+  const isBacktest = accountType === 'BACKTEST'
 
   async function onSubmit(values) {
     try {
@@ -308,38 +336,56 @@ export default function AccountsPage() {
       {/* Add Account Modal */}
       <Modal open={showAdd} onClose={() => { setShowAdd(false); reset() }} title="Add Account" size="lg">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <Select label="Account Type" {...register('accountType')}>
+            <option value="LIVE">Live / Prop Firm / Personal</option>
+            <option value="BACKTEST">Backtest</option>
+          </Select>
+
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Account Name" placeholder="Main Funded Account" error={errors.name?.message} {...register('name')} />
-            <Input label="Prop Firm Name" placeholder="Apex, FTMO, TopStep…" {...register('propFirm')} />
+            <Input label="Account Name" placeholder={isBacktest ? 'Backtest — NQ Strategy A' : 'Main Funded Account'} error={errors.name?.message} {...register('name')} />
+            {!isBacktest && (
+              <Input label="Prop Firm Name" placeholder="Apex, FTMO, TopStep…" {...register('propFirm')} />
+            )}
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <Input label="Account Size ($)" type="number" placeholder="100000" error={errors.accountSize?.message} {...register('accountSize')} />
-            <Input label="Starting Balance ($)" type="number" placeholder="100000" error={errors.startingBalance?.message} {...register('startingBalance')} />
-            <Input label="Current Balance ($)" type="number" placeholder="100000" error={errors.currentBalance?.message} {...register('currentBalance')} />
-          </div>
-          <Input label="Profit Target ($)" type="number" placeholder="10000" error={errors.profitTarget?.message} {...register('profitTarget')} />
-          <div className="grid grid-cols-2 gap-4">
-            <Select label="Max Drawdown Type" {...register('maxDrawdownType')}>
-              <option value="Trailing EOD">Trailing EOD</option>
-              <option value="Static">Static</option>
-              <option value="Daily Loss Limit">Daily Loss Limit</option>
-              <option value="Custom">Custom</option>
-            </Select>
-            <Input label="Max Drawdown Value ($)" type="number" placeholder="3000" error={errors.maxDrawdownValue?.message} {...register('maxDrawdownValue')} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Daily Loss Limit ($) — optional" type="number" placeholder="1000" {...register('dailyLossLimit')} />
-            <Input label="Consistency Rule (%) — optional" type="number" placeholder="30" hint="Max % of total profit per day" {...register('consistencyRule')} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Max Contracts — optional" type="number" placeholder="5" {...register('maxContracts')} />
-            <Select label="Payout Frequency" {...register('payoutFrequency')}>
-              <option value="Daily">Daily</option>
-              <option value="Weekly">Weekly</option>
-              <option value="Every 5 days">Every 5 days</option>
-              <option value="Monthly">Monthly</option>
-            </Select>
-          </div>
+
+          {isBacktest ? (
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Starting Balance ($) — optional" type="number" placeholder="100000" {...register('startingBalance')} />
+              <Input label="Current Balance ($) — optional" type="number" placeholder="100000" {...register('currentBalance')} />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-4">
+                <Input label="Account Size ($)" type="number" placeholder="100000" error={errors.accountSize?.message} {...register('accountSize')} />
+                <Input label="Starting Balance ($)" type="number" placeholder="100000" error={errors.startingBalance?.message} {...register('startingBalance')} />
+                <Input label="Current Balance ($)" type="number" placeholder="100000" error={errors.currentBalance?.message} {...register('currentBalance')} />
+              </div>
+              <Input label="Profit Target ($)" type="number" placeholder="10000" error={errors.profitTarget?.message} {...register('profitTarget')} />
+              <div className="grid grid-cols-2 gap-4">
+                <Select label="Max Drawdown Type" {...register('maxDrawdownType')}>
+                  <option value="Trailing EOD">Trailing EOD</option>
+                  <option value="Static">Static</option>
+                  <option value="Daily Loss Limit">Daily Loss Limit</option>
+                  <option value="Custom">Custom</option>
+                </Select>
+                <Input label="Max Drawdown Value ($)" type="number" placeholder="3000" error={errors.maxDrawdownValue?.message} {...register('maxDrawdownValue')} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Daily Loss Limit ($) — optional" type="number" placeholder="1000" {...register('dailyLossLimit')} />
+                <Input label="Consistency Rule (%) — optional" type="number" placeholder="30" hint="Max % of total profit per day" {...register('consistencyRule')} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Max Contracts — optional" type="number" placeholder="5" {...register('maxContracts')} />
+                <Select label="Payout Frequency" {...register('payoutFrequency')}>
+                  <option value="Daily">Daily</option>
+                  <option value="Weekly">Weekly</option>
+                  <option value="Every 5 days">Every 5 days</option>
+                  <option value="Monthly">Monthly</option>
+                </Select>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">Notes</label>
             <textarea rows={2} className="w-full bg-surface2 border border-border rounded-lg text-sm text-primary placeholder-secondary/60 px-3 py-2.5 resize-none focus:outline-none focus:border-accent/60" placeholder="Any notes about this account…" {...register('notes')} />

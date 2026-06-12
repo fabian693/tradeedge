@@ -21,8 +21,15 @@ router.post(
   '/',
   [
     body('name').trim().notEmpty().withMessage('Account name is required'),
-    body('accountSize').isFloat({ gt: 0 }).withMessage('accountSize must be a positive number'),
-    body('startingBalance').isFloat({ gt: 0 }).withMessage('startingBalance must be a positive number'),
+    body('accountType').optional().isIn(['LIVE', 'BACKTEST']).withMessage('Invalid account type'),
+    body('accountSize')
+      .if(body('accountType').not().equals('BACKTEST'))
+      .isFloat({ gt: 0 })
+      .withMessage('accountSize must be a positive number'),
+    body('startingBalance')
+      .if(body('accountType').not().equals('BACKTEST'))
+      .isFloat({ gt: 0 })
+      .withMessage('startingBalance must be a positive number'),
   ],
   createAccount
 );
@@ -32,6 +39,7 @@ router.get('/:id', getAccount);
 
 // PUT /api/accounts/:id
 router.put('/:id', updateAccount);
+router.patch('/:id', updateAccount);
 
 // DELETE /api/accounts/:id
 router.delete('/:id', deleteAccount);
