@@ -65,14 +65,30 @@ function parseCsvToRecords(text) {
     return {
       raw,
       get(...aliases) {
-        for (const alias of aliases) {
-          const target = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const targets = aliases.map((alias) => alias.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+        // Pass 1: exact header match
+        for (const target of targets) {
           const idx = normalized.indexOf(target);
           if (idx !== -1) {
             const val = (row[idx] ?? '').trim();
             if (val !== '') return val;
           }
         }
+
+        // Pass 2: fuzzy match — header contains the alias as a substring.
+        // Helps with spreadsheet exports that have verbose/custom column names
+        // (e.g. "Direction DON'T WRITE HERE", "Win / Loss DON'T WIRTE HERE").
+        // Only for aliases of meaningful length to avoid false positives.
+        for (const target of targets) {
+          if (target.length < 4) continue;
+          const idx = normalized.findIndex((h) => h.includes(target));
+          if (idx !== -1) {
+            const val = (row[idx] ?? '').trim();
+            if (val !== '') return val;
+          }
+        }
+
         return undefined;
       },
     };

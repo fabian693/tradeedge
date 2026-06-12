@@ -475,14 +475,40 @@ async function rateTrade(req, res, next) {
   }
 }
 
+// Parse dates from various spreadsheet formats. Tries native parsing first,
+// then falls back to DD/MM/YY(YY) [HH:mm] (common in UK-style exports), which
+// JS's Date constructor either rejects or misinterprets as MM/DD.
+function parseFlexibleDate(raw) {
+  if (!raw) return null;
+
+  const native = new Date(raw);
+  if (!isNaN(native.getTime())) return native;
+
+  const m = String(raw).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (m) {
+    let [, day, month, year, hour, minute] = m;
+    day = Number(day);
+    month = Number(month);
+    year = Number(year);
+    if (year < 100) year += 2000;
+    hour = hour ? Number(hour) : 0;
+    minute = minute ? Number(minute) : 0;
+
+    const parsed = new Date(year, month - 1, day, hour, minute);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
+  return null;
+}
+
 // Best-effort mapping of common broker CSV exports to TradeEdge trade fields.
 function mapCsvRecordToTrade(record, fallbackAccountId) {
   const get = (...aliases) => record.get(...aliases);
 
   // --- Date/time ---
-  const rawDate = get('dateTime', 'date', 'date/time', 'open time', 'opened', 'time', 'entry time', 'entry date');
-  let dateTime = rawDate ? new Date(rawDate) : null;
-  if (!dateTime || isNaN(dateTime.getTime())) dateTime = new Date();
+  const rawDate = get('dateTime', 'date', 'date/time', 'open time', 'opened', 'time', 'entry time', 'entry date', 'date & time');
+  let dateTime = parseFlexibleDate(rawDate);
+  if (!dateTime) dateTime = new Date();
 
   // --- Direction ---
   const rawDirection = (get('direction', 'side', 'type', 'action', 'buy/sell', 'position') || '').toLowerCase();
@@ -491,7 +517,7 @@ function mapCsvRecordToTrade(record, fallbackAccountId) {
   else if (['buy', 'long', 'b'].includes(rawDirection)) direction = 'LONG';
 
   // --- Market / symbol ---
-  const rawSymbol = (get('market', 'symbol', 'instrument', 'ticker', 'product') || '').toUpperCase();
+  const rawSymbol = (get('market', 'symbol', 'instrument', 'ticker', 'product', 'coin') || '').toUpperCase();
   let market = 'NQ';
   if (rawSymbol.includes('ES')) market = 'ES';
   else if (rawSymbol.includes('NQ')) market = 'NQ';
@@ -510,7 +536,7 @@ function mapCsvRecordToTrade(record, fallbackAccountId) {
   const tpPrice = toNum(get('tpPrice', 'take profit', 'take-profit', 'tp', 'target price'));
   const contracts = toNum(get('contracts', 'quantity', 'qty', 'size', 'lots', 'volume')) || 1;
   const pnl = toNum(get('pnl', 'profit', 'p/l', 'pl', 'net profit', 'net p/l', 'profit/loss', 'realized p/l'));
-  const rrAchieved = toNum(get('rrAchieved', 'rr', 'r multiple', 'r-multiple', 'risk reward'));
+  const rrAchieved = toNum(get('rrAchieved', 'rr', 'r multiple', 'r-multiple', 'risk reward', 'returns'));
 
   // entryPrice/slPrice are required by the schema — fall back to sensible defaults
   const safeEntryPrice = entryPrice != null ? entryPrice : 0;
