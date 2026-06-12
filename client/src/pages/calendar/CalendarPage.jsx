@@ -68,9 +68,16 @@ export default function CalendarPage() {
           </div>
           {summary && (
             <div className="flex items-center gap-4 text-sm">
-              <span className={cn('font-mono font-semibold', summary.totalPnl > 0 ? 'text-success' : summary.totalPnl < 0 ? 'text-danger' : 'text-secondary')}>
-                {formatCurrency(summary.totalPnl)}
-              </span>
+              {summary.totalPnl !== 0 ? (
+                <span className={cn('font-mono font-semibold', summary.totalPnl > 0 ? 'text-success' : summary.totalPnl < 0 ? 'text-danger' : 'text-secondary')}>
+                  {formatCurrency(summary.totalPnl)}
+                </span>
+              ) : summary.totalRr !== 0 && (
+                <span className={cn('font-mono font-semibold', summary.totalRr > 0 ? 'text-success' : summary.totalRr < 0 ? 'text-danger' : 'text-secondary')}>
+                  {summary.totalRr > 0 ? '+' : ''}{summary.totalRr.toFixed(2)}R
+                </span>
+              )}
+              <span className="text-secondary">{summary.totalWins}W / {summary.totalLosses}L</span>
               <span className="text-secondary">{summary.totalTrades} trade{summary.totalTrades !== 1 ? 's' : ''}</span>
               <span className="text-secondary">{summary.tradingDays} trading day{summary.tradingDays !== 1 ? 's' : ''}</span>
             </div>
@@ -93,7 +100,18 @@ export default function CalendarPage() {
               const entry = dayMap[key]
               const inMonth = isSameMonth(day, cursor)
               const pnl = entry?.pnl ?? 0
+              const rr = entry?.rr ?? 0
+              const wins = entry?.wins ?? 0
+              const losses = entry?.losses ?? 0
               const hasTrades = !!entry?.trades
+
+              // Determine whether the day was a win or a loss.
+              // Prefer $ P&L if it's non-zero (live accounts), otherwise fall
+              // back to R-multiple total (backtests), and finally to win/loss count.
+              let dayOutcome = 0
+              if (pnl !== 0) dayOutcome = pnl
+              else if (rr !== 0) dayOutcome = rr
+              else if (wins !== losses) dayOutcome = wins - losses
 
               return (
                 <button
@@ -104,9 +122,9 @@ export default function CalendarPage() {
                     'aspect-square rounded-xl p-2 flex flex-col justify-between text-left transition-colors border',
                     !inMonth && 'opacity-30',
                     hasTrades
-                      ? pnl > 0
+                      ? dayOutcome > 0
                         ? 'bg-success/10 border-success/30 hover:bg-success/20 cursor-pointer'
-                        : pnl < 0
+                        : dayOutcome < 0
                           ? 'bg-danger/10 border-danger/30 hover:bg-danger/20 cursor-pointer'
                           : 'bg-white/5 border-white/10 hover:bg-white/10 cursor-pointer'
                       : 'bg-transparent border-transparent cursor-default',
@@ -118,10 +136,19 @@ export default function CalendarPage() {
                   </span>
                   {hasTrades && (
                     <div className="space-y-0.5">
-                      <p className={cn('text-xs sm:text-sm font-mono font-semibold', pnl > 0 ? 'text-success' : pnl < 0 ? 'text-danger' : 'text-secondary')}>
-                        {formatCurrency(pnl)}
+                      {pnl !== 0 && (
+                        <p className={cn('text-xs sm:text-sm font-mono font-semibold', pnl > 0 ? 'text-success' : pnl < 0 ? 'text-danger' : 'text-secondary')}>
+                          {formatCurrency(pnl)}
+                        </p>
+                      )}
+                      {rr !== 0 && (
+                        <p className={cn('text-xs sm:text-sm font-mono font-semibold', rr > 0 ? 'text-success' : rr < 0 ? 'text-danger' : 'text-secondary')}>
+                          {rr > 0 ? '+' : ''}{rr.toFixed(2)}R
+                        </p>
+                      )}
+                      <p className="text-[10px] text-secondary">
+                        {wins}W / {losses}L · {entry.trades} trade{entry.trades !== 1 ? 's' : ''}
                       </p>
-                      <p className="text-[10px] text-secondary">{entry.trades} trade{entry.trades !== 1 ? 's' : ''}</p>
                     </div>
                   )}
                 </button>

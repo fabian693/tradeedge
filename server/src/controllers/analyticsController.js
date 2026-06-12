@@ -311,31 +311,42 @@ async function calendar(req, res, next) {
     const trades = await prisma.trade.findMany({
       where,
       orderBy: { dateTime: 'asc' },
-      select: { id: true, dateTime: true, pnl: true, result: true },
+      select: { id: true, dateTime: true, pnl: true, result: true, rrAchieved: true },
     });
 
     const days = {};
     for (const t of trades) {
       const key = format(t.dateTime, 'yyyy-MM-dd');
-      if (!days[key]) days[key] = { date: key, pnl: 0, trades: 0, wins: 0, losses: 0, breakevens: 0 };
+      if (!days[key]) days[key] = { date: key, pnl: 0, rr: 0, trades: 0, wins: 0, losses: 0, breakevens: 0 };
       days[key].pnl += t.pnl || 0;
+      days[key].rr += t.rrAchieved || 0;
       days[key].trades += 1;
       if (t.result === 'WIN') days[key].wins += 1;
       else if (t.result === 'LOSS') days[key].losses += 1;
       else if (t.result === 'BREAKEVEN') days[key].breakevens += 1;
     }
 
-    const dayList = Object.values(days).map((d) => ({ ...d, pnl: Math.round(d.pnl * 100) / 100 }));
+    const dayList = Object.values(days).map((d) => ({
+      ...d,
+      pnl: Math.round(d.pnl * 100) / 100,
+      rr: Math.round(d.rr * 100) / 100,
+    }));
 
     const totalPnl = dayList.reduce((sum, d) => sum + d.pnl, 0);
+    const totalRr = dayList.reduce((sum, d) => sum + d.rr, 0);
     const totalTrades = dayList.reduce((sum, d) => sum + d.trades, 0);
+    const totalWins = dayList.reduce((sum, d) => sum + d.wins, 0);
+    const totalLosses = dayList.reduce((sum, d) => sum + d.losses, 0);
 
     return res.json({
       month: format(monthDate, 'yyyy-MM'),
       days: dayList,
       summary: {
         totalPnl: Math.round(totalPnl * 100) / 100,
+        totalRr: Math.round(totalRr * 100) / 100,
         totalTrades,
+        totalWins,
+        totalLosses,
         tradingDays: dayList.length,
       },
     });
