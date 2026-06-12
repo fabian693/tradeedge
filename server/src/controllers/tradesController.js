@@ -481,10 +481,11 @@ async function rateTrade(req, res, next) {
 function parseFlexibleDate(raw) {
   if (!raw) return null;
 
-  const native = new Date(raw);
-  if (!isNaN(native.getTime())) return native;
-
-  const m = String(raw).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  // Try DD/MM/YY(YY) [H:mm] first — common in UK-style spreadsheet exports.
+  // Must take priority over native parsing: for ambiguous strings like
+  // "11/3/2026", JS's Date constructor assumes US M/D/Y (Nov 3) which is
+  // wrong for this data (it means 11 Mar 2026).
+  const m = String(raw).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?\s*$/);
   if (m) {
     let [, day, month, year, hour, minute] = m;
     day = Number(day);
@@ -494,9 +495,14 @@ function parseFlexibleDate(raw) {
     hour = hour ? Number(hour) : 0;
     minute = minute ? Number(minute) : 0;
 
-    const parsed = new Date(year, month - 1, day, hour, minute);
-    if (!isNaN(parsed.getTime())) return parsed;
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      const parsed = new Date(year, month - 1, day, hour, minute);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
   }
+
+  const native = new Date(raw);
+  if (!isNaN(native.getTime())) return native;
 
   return null;
 }
