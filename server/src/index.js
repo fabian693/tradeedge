@@ -27,16 +27,20 @@ app.use(helmet());
 
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:3000')
   .split(',')
-  .map((o) => o.trim());
+  .map((o) => o.trim().replace(/\/$/, ''))
+  .filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // allow requests with no origin (curl, server-to-server, health checks)
-      if (!origin || allowedOrigins.includes(origin)) {
+      const normalized = origin?.replace(/\/$/, '');
+      if (!origin || allowedOrigins.includes(normalized)) {
         return callback(null, true);
       }
-      return callback(new Error('Not allowed by CORS'));
+      // Don't throw — just decline to set CORS headers for disallowed origins
+      // so the response still completes normally instead of a 500.
+      return callback(null, false);
     },
     credentials: true,
   })

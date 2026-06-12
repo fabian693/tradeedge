@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, Fragment } from 'react'
+import { Link } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -759,8 +760,18 @@ function ImportCsvModal({ open, onClose, accounts }) {
   const [file, setFile] = useState(null)
   const [accountId, setAccountId] = useState(accounts?.[0]?.id || '')
   const [result, setResult] = useState(null)
+  const [dragging, setDragging] = useState(false)
   const importCsv = useImportCsv()
   const fileInputRef = useRef(null)
+
+  function handleFile(f) {
+    if (!f) return
+    if (!f.name.toLowerCase().endsWith('.csv') && f.type !== 'text/csv') {
+      toast.error('Please select a CSV file.')
+      return
+    }
+    setFile(f)
+  }
 
   useEffect(() => {
     if (open) {
@@ -795,14 +806,24 @@ function ImportCsvModal({ open, onClose, accounts }) {
           automatically. Any missing fields will be filled with sensible defaults.
         </p>
 
-        <Select label="Import into account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-          {(accounts ?? []).map((a) => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </Select>
+        {accounts?.length > 0 ? (
+          <Select label="Import into account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </Select>
+        ) : (
+          <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 text-sm text-warning">
+            You need to create a trading account before importing trades. Go to{' '}
+            <Link to="/accounts" className="underline font-medium">Accounts</Link> to create one first.
+          </div>
+        )}
 
         <div
-          className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-accent/40 transition-colors"
+          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${dragging ? 'border-accent bg-accent/5' : 'border-white/10 hover:border-accent/40'}`}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files?.[0]) }}
           onClick={() => fileInputRef.current?.click()}
         >
           <input
@@ -810,7 +831,7 @@ function ImportCsvModal({ open, onClose, accounts }) {
             type="file"
             accept=".csv,text/csv"
             className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            onChange={(e) => handleFile(e.target.files?.[0] || null)}
           />
           {file ? (
             <div className="flex items-center justify-center gap-2 text-primary">
@@ -820,7 +841,7 @@ function ImportCsvModal({ open, onClose, accounts }) {
           ) : (
             <div className="flex flex-col items-center gap-2 text-secondary">
               <FileUp className="w-6 h-6" />
-              <span className="text-sm">Click to choose a CSV file</span>
+              <span className="text-sm">Drop CSV here or click to choose a file</span>
             </div>
           )}
         </div>
