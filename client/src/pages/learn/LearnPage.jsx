@@ -7,6 +7,23 @@ import {
 import { cn } from '../../lib/utils'
 import { useAuth } from '../../hooks/useAuth'
 import { Button } from '../../components/shared/Button'
+import {
+  MarketStructureDiagram,
+  LiquidityDiagram,
+  FVGDiagram,
+  IFVGDiagram,
+  SMTDivergenceDiagram,
+  PremiumDiscountDiagram,
+} from './diagrams'
+
+const LESSON_DIAGRAMS = {
+  'p1-l1': MarketStructureDiagram,
+  'p1-l2': LiquidityDiagram,
+  'p2-l4': FVGDiagram,
+  'p2-l5': IFVGDiagram,
+  'p2-l6': SMTDivergenceDiagram,
+  'p2-l7': PremiumDiscountDiagram,
+}
 
 // ─── Content ────────────────────────────────────────────────────────────────
 
@@ -1558,6 +1575,11 @@ function LessonView({ lesson, onBack }) {
         <Clock className="w-3.5 h-3.5 text-secondary" />
         <span className="text-xs text-secondary">{lesson.readTime} read</span>
       </div>
+
+      {LESSON_DIAGRAMS[lesson.id] && (() => {
+        const Diagram = LESSON_DIAGRAMS[lesson.id]
+        return <Diagram />
+      })()}
 
       <div className="space-y-3">
         {lesson.sections.map((section, i) => (
