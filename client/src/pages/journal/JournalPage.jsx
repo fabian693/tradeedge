@@ -26,6 +26,11 @@ import { LoadingSpinner } from '../../components/shared/LoadingSpinner'
 import { formatCurrency, getTradeColor, cn } from '../../lib/utils'
 
 // ---- Zod schema ----
+const optionalNumber = z.preprocess(
+  (val) => (val === '' || val == null ? undefined : val),
+  z.coerce.number().optional()
+)
+
 const tradeSchema = z.object({
   tradeDate: z.string().min(1, 'Date required'),
   market: z.enum(['NQ', 'ES']),
@@ -40,10 +45,10 @@ const tradeSchema = z.object({
   entryPrice: z.coerce.number(),
   stopLoss: z.coerce.number(),
   stopLossType: z.enum(['Aggressive', 'Safe']),
-  takeProfit: z.coerce.number(),
+  takeProfit: optionalNumber,
   contracts: z.coerce.number().int().positive(),
   accountId: z.string().optional(),
-  exitPrice: z.coerce.number(),
+  exitPrice: optionalNumber,
   result: z.enum(['Win', 'Loss', 'Breakeven']),
   ruleViolation: z.enum(['Yes', 'No']),
   violationDescription: z.string().optional(),
@@ -503,7 +508,7 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
           <div className="grid grid-cols-3 gap-4">
             <Input label="Entry Price" type="number" step="0.25" error={errors.entryPrice?.message} {...register('entryPrice')} />
             <Input label="Stop Loss" type="number" step="0.25" error={errors.stopLoss?.message} {...register('stopLoss')} />
-            <Input label="Take Profit" type="number" step="0.25" error={errors.takeProfit?.message} {...register('takeProfit')} />
+            <Input label="Take Profit (optional)" type="number" step="0.25" error={errors.takeProfit?.message} {...register('takeProfit')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Select label="SL Type" {...register('stopLossType')}>
@@ -523,7 +528,7 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
         {/* Result & Review */}
         <div className="space-y-4 pt-2 border-t border-border">
           <div className="grid grid-cols-2 gap-4 pt-4">
-            <Input label="Exit Price" type="number" step="0.25" error={errors.exitPrice?.message} {...register('exitPrice')} />
+            <Input label="Exit Price (optional)" type="number" step="0.25" error={errors.exitPrice?.message} {...register('exitPrice')} />
             <Select label="Result" {...register('result')}>
               <option value="Win">Win</option>
               <option value="Loss">Loss</option>
