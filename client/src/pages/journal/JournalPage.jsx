@@ -291,9 +291,8 @@ function TradeDetail({ trade, onRate }) {
   )
 }
 
-// ---- Log Trade Modal (3-step) ----
+// ---- Log Trade Modal (single step) ----
 function LogTradeModal({ open, onClose, accounts, onLogged }) {
-  const [step, setStep] = useState(1)
   const [screenshot, setScreenshot] = useState(null)
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef(null)
@@ -304,7 +303,6 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
   const {
     register, handleSubmit, watch, control, setValue,
     formState: { errors },
-    trigger,
     reset,
   } = useForm({
     resolver: zodResolver(tradeSchema),
@@ -337,16 +335,6 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
   const rrTarget = calcRR(entry, sl, tp)
   const rrAchieved = calcSignedRR(entry, sl, exit, direction)
   const pnl = exit && entry ? calcPnL(entry, exit, contracts, direction) : null
-
-  const STEP_FIELDS = {
-    1: ['tradeDate', 'market', 'session', 'direction', 'dailyBias', 'killzoneConfirmed'],
-    2: ['ifvgTimeframe', 'setupGrade', 'confirmation1', 'confirmation2', 'entryPrice', 'stopLoss', 'stopLossType', 'takeProfit', 'contracts'],
-  }
-
-  async function nextStep() {
-    const valid = await trigger(STEP_FIELDS[step])
-    if (valid) setStep((s) => s + 1)
-  }
 
   function handleFile(file) {
     if (!file) return
@@ -386,7 +374,6 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
       toast.success('Trade logged!')
       onClose()
       reset()
-      setStep(1)
       setScreenshot(null)
       onLogged?.(trade)
     } catch {
@@ -397,237 +384,222 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
   function handleClose() {
     onClose()
     reset()
-    setStep(1)
     setScreenshot(null)
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title={`Log Trade — Step ${step} of 3`} size="lg">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {/* Step 1: Session & Bias */}
-        {step === 1 && (
-          <div className="space-y-4">
-            <Input
-              label="Date & Time"
-              type="datetime-local"
-              error={errors.tradeDate?.message}
-              {...register('tradeDate')}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Market" error={errors.market?.message} {...register('market')}>
-                <option value="NQ">NQ</option>
-                <option value="ES">ES</option>
-              </Select>
-              <Select label="Session" error={errors.session?.message} {...register('session')}>
-                <option value="London">London</option>
-                <option value="NY">NY</option>
-              </Select>
+    <Modal open={open} onClose={handleClose} title="Log Trade" size="lg">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Screenshot — first, so AI can prefill everything below */}
+        <div>
+          <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">Screenshot</label>
+          {screenshot ? (
+            <div className="space-y-2">
+              <div className="relative">
+                <img src={screenshot.url} alt="Preview" className="w-full max-h-48 object-cover rounded-xl border border-border" />
+                <button
+                  type="button"
+                  onClick={() => setScreenshot(null)}
+                  className="absolute top-2 right-2 p-1 bg-background/80 rounded-full text-secondary hover:text-primary"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={handleAnalyze}
+                loading={analyzeScreenshot.isPending}
+                leftIcon={<Sparkles className="w-3.5 h-3.5" />}
+              >
+                Analyze with AI & prefill
+              </Button>
+              <p className="text-xs text-secondary/60">
+                The screenshot is saved with this trade either way.
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Direction" error={errors.direction?.message} {...register('direction')}>
-                <option value="Long">Long</option>
-                <option value="Short">Short</option>
-              </Select>
-              <Select label="Daily Bias" error={errors.dailyBias?.message} {...register('dailyBias')}>
-                <option value="Bullish">Bullish</option>
-                <option value="Bearish">Bearish</option>
-              </Select>
+          ) : (
+            <div
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${dragging ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'}`}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]) }}
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload className="w-8 h-8 text-secondary mx-auto mb-2" />
+              <p className="text-sm text-secondary">Drop screenshot here or click to upload</p>
+              <p className="text-xs text-secondary/60 mt-1">PNG, JPG up to 10MB — optional, but lets AI prefill the form below</p>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
             </div>
-            <Select label="Killzone Confirmed" error={errors.killzoneConfirmed?.message} {...register('killzoneConfirmed')}>
-              <option value="Yes">Yes</option>
-              <option value="No">No</option>
+          )}
+        </div>
+
+        {/* Session & Bias */}
+        <div className="space-y-4">
+          <Input
+            label="Date & Time"
+            type="datetime-local"
+            error={errors.tradeDate?.message}
+            {...register('tradeDate')}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Market" error={errors.market?.message} {...register('market')}>
+              <option value="NQ">NQ</option>
+              <option value="ES">ES</option>
+            </Select>
+            <Select label="Session" error={errors.session?.message} {...register('session')}>
+              <option value="London">London</option>
+              <option value="NY">NY</option>
             </Select>
           </div>
-        )}
-
-        {/* Step 2: Setup */}
-        {step === 2 && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Setup Grade" {...register('setupGrade')}>
-                <option value="A+">A+</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-              </Select>
-              <Select label="IFVG Confirmation (optional)" {...register('ifvgTimeframe')}>
-                <option value="None">None</option>
-                <option value="1min">1 min</option>
-                <option value="2min">2 min</option>
-                <option value="5min">5 min</option>
-                <option value="15min">15 min</option>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Confirmation 1 (optional)" {...register('confirmation1')}>
-                <option value="None">None</option>
-                <option value="Liquidity Sweep">Liquidity Sweep</option>
-                <option value="SMT Divergence">SMT Divergence</option>
-                <option value="FVG Alignment">FVG Alignment</option>
-              </Select>
-              <Select label="Confirmation 2 (optional)" {...register('confirmation2')}>
-                <option value="None">None</option>
-                <option value="Liquidity Sweep">Liquidity Sweep</option>
-                <option value="SMT Divergence">SMT Divergence</option>
-                <option value="FVG Alignment">FVG Alignment</option>
-              </Select>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Input label="Entry Price" type="number" step="0.25" error={errors.entryPrice?.message} {...register('entryPrice')} />
-              <Input label="Stop Loss" type="number" step="0.25" error={errors.stopLoss?.message} {...register('stopLoss')} />
-              <Input label="Take Profit" type="number" step="0.25" error={errors.takeProfit?.message} {...register('takeProfit')} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="SL Type" {...register('stopLossType')}>
-                <option value="Aggressive">Aggressive</option>
-                <option value="Safe">Safe</option>
-              </Select>
-              <Input label="Contracts" type="number" min="1" error={errors.contracts?.message} {...register('contracts')} />
-            </div>
-            {rrTarget && (
-              <div className="bg-surface2 border border-border rounded-xl p-3">
-                <p className="text-xs text-secondary">Target R:R</p>
-                <p className="text-xl font-mono font-bold text-accent">{rrTarget}R</p>
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Direction" error={errors.direction?.message} {...register('direction')}>
+              <option value="Long">Long</option>
+              <option value="Short">Short</option>
+            </Select>
+            <Select label="Daily Bias" error={errors.dailyBias?.message} {...register('dailyBias')}>
+              <option value="Bullish">Bullish</option>
+              <option value="Bearish">Bearish</option>
+            </Select>
           </div>
-        )}
+          <Select label="Killzone Confirmed" error={errors.killzoneConfirmed?.message} {...register('killzoneConfirmed')}>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </Select>
+        </div>
 
-        {/* Step 3: Result & Review */}
-        {step === 3 && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Exit Price" type="number" step="0.25" error={errors.exitPrice?.message} {...register('exitPrice')} />
-              <Select label="Result" {...register('result')}>
-                <option value="Win">Win</option>
-                <option value="Loss">Loss</option>
-                <option value="Breakeven">Breakeven</option>
-              </Select>
+        {/* Setup */}
+        <div className="space-y-4 pt-2 border-t border-border">
+          <div className="grid grid-cols-2 gap-4 pt-4">
+            <Select label="Setup Grade" {...register('setupGrade')}>
+              <option value="A+">A+</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+            </Select>
+            <Select label="IFVG Confirmation (optional)" {...register('ifvgTimeframe')}>
+              <option value="None">None</option>
+              <option value="1min">1 min</option>
+              <option value="2min">2 min</option>
+              <option value="5min">5 min</option>
+              <option value="15min">15 min</option>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Confirmation 1 (optional)" {...register('confirmation1')}>
+              <option value="None">None</option>
+              <option value="Liquidity Sweep">Liquidity Sweep</option>
+              <option value="SMT Divergence">SMT Divergence</option>
+              <option value="FVG Alignment">FVG Alignment</option>
+            </Select>
+            <Select label="Confirmation 2 (optional)" {...register('confirmation2')}>
+              <option value="None">None</option>
+              <option value="Liquidity Sweep">Liquidity Sweep</option>
+              <option value="SMT Divergence">SMT Divergence</option>
+              <option value="FVG Alignment">FVG Alignment</option>
+            </Select>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Input label="Entry Price" type="number" step="0.25" error={errors.entryPrice?.message} {...register('entryPrice')} />
+            <Input label="Stop Loss" type="number" step="0.25" error={errors.stopLoss?.message} {...register('stopLoss')} />
+            <Input label="Take Profit" type="number" step="0.25" error={errors.takeProfit?.message} {...register('takeProfit')} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="SL Type" {...register('stopLossType')}>
+              <option value="Aggressive">Aggressive</option>
+              <option value="Safe">Safe</option>
+            </Select>
+            <Input label="Contracts" type="number" min="1" error={errors.contracts?.message} {...register('contracts')} />
+          </div>
+          {rrTarget && (
+            <div className="bg-surface2 border border-border rounded-xl p-3">
+              <p className="text-xs text-secondary">Target R:R</p>
+              <p className="text-xl font-mono font-bold text-accent">{rrTarget}R</p>
             </div>
-            {(rrAchieved || pnl !== null) && (
-              <div className="grid grid-cols-2 gap-4">
-                {rrAchieved && (
-                  <div className="bg-surface2 border border-border rounded-xl p-3">
-                    <p className="text-xs text-secondary">Achieved R:R</p>
-                    <p className={`text-xl font-mono font-bold ${parseFloat(rrAchieved) >= 0 ? 'text-accent' : 'text-danger'}`}>
-                      {rrAchieved}R
-                    </p>
-                  </div>
-                )}
-                {pnl !== null && (
-                  <div className="bg-surface2 border border-border rounded-xl p-3">
-                    <p className="text-xs text-secondary">P&L (est.)</p>
-                    <p className={`text-xl font-mono font-bold ${pnl >= 0 ? 'text-accent' : 'text-danger'}`}>
-                      {formatCurrency(pnl)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-4">
-              <Select label="Rule Violation" {...register('ruleViolation')}>
-                <option value="No">No</option>
-                <option value="Yes">Yes</option>
-              </Select>
-              {accounts?.length > 0 && (
-                <Select label="Account" {...register('accountId')}>
-                  <option value="">Select account…</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </Select>
-              )}
-            </div>
-            {ruleViolation === 'Yes' && (
-              <Input
-                label="Violation description"
-                placeholder="Describe the rule you violated…"
-                {...register('violationDescription')}
-              />
-            )}
-            <label className="flex items-center gap-2.5 bg-surface2 border border-border rounded-xl px-3 py-2.5 cursor-pointer">
-              <input type="checkbox" className="w-4 h-4 accent-accent" {...register('isPublic')} />
-              <div>
-                <p className="text-sm text-primary">Share on Fabian's Trades</p>
-                <p className="text-xs text-secondary">Make this trade visible on the public trades page</p>
-              </div>
-            </label>
-            <div>
-              <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">What went well</label>
-              <textarea rows={2} className="w-full bg-surface2 border border-border rounded-lg text-sm text-primary placeholder-secondary/60 px-3 py-2.5 resize-none focus:outline-none focus:border-accent/60" placeholder="What worked in this trade…" {...register('wentWell')} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">To improve</label>
-              <textarea rows={2} className="w-full bg-surface2 border border-border rounded-lg text-sm text-primary placeholder-secondary/60 px-3 py-2.5 resize-none focus:outline-none focus:border-accent/60" placeholder="What you would do differently…" {...register('toImprove')} />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">Notes</label>
-              <textarea rows={2} className="w-full bg-surface2 border border-border rounded-lg text-sm text-primary placeholder-secondary/60 px-3 py-2.5 resize-none focus:outline-none focus:border-accent/60" placeholder="Any additional notes…" {...register('notes')} />
-            </div>
+          )}
+        </div>
 
-            {/* Screenshot drop zone */}
-            <div>
-              <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">Screenshot (optional)</label>
-              {screenshot ? (
-                <div className="space-y-2">
-                  <div className="relative">
-                    <img src={screenshot.url} alt="Preview" className="w-full max-h-48 object-cover rounded-xl border border-border" />
-                    <button
-                      type="button"
-                      onClick={() => setScreenshot(null)}
-                      className="absolute top-2 right-2 p-1 bg-background/80 rounded-full text-secondary hover:text-primary"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="w-full"
-                    onClick={handleAnalyze}
-                    loading={analyzeScreenshot.isPending}
-                    leftIcon={<Sparkles className="w-3.5 h-3.5" />}
-                  >
-                    Analyze with AI & prefill
-                  </Button>
-                  <p className="text-xs text-secondary/60">
-                    The screenshot is saved with this trade for future reference either way.
+        {/* Result & Review */}
+        <div className="space-y-4 pt-2 border-t border-border">
+          <div className="grid grid-cols-2 gap-4 pt-4">
+            <Input label="Exit Price" type="number" step="0.25" error={errors.exitPrice?.message} {...register('exitPrice')} />
+            <Select label="Result" {...register('result')}>
+              <option value="Win">Win</option>
+              <option value="Loss">Loss</option>
+              <option value="Breakeven">Breakeven</option>
+            </Select>
+          </div>
+          {(rrAchieved || pnl !== null) && (
+            <div className="grid grid-cols-2 gap-4">
+              {rrAchieved && (
+                <div className="bg-surface2 border border-border rounded-xl p-3">
+                  <p className="text-xs text-secondary">Achieved R:R</p>
+                  <p className={`text-xl font-mono font-bold ${parseFloat(rrAchieved) >= 0 ? 'text-accent' : 'text-danger'}`}>
+                    {rrAchieved}R
                   </p>
                 </div>
-              ) : (
-                <div
-                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${dragging ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'}`}
-                  onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-                  onDragLeave={() => setDragging(false)}
-                  onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]) }}
-                  onClick={() => fileRef.current?.click()}
-                >
-                  <Upload className="w-8 h-8 text-secondary mx-auto mb-2" />
-                  <p className="text-sm text-secondary">Drop screenshot here or click to upload</p>
-                  <p className="text-xs text-secondary/60 mt-1">PNG, JPG up to 10MB</p>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files[0])} />
+              )}
+              {pnl !== null && (
+                <div className="bg-surface2 border border-border rounded-xl p-3">
+                  <p className="text-xs text-secondary">P&L (est.)</p>
+                  <p className={`text-xl font-mono font-bold ${pnl >= 0 ? 'text-accent' : 'text-danger'}`}>
+                    {formatCurrency(pnl)}
+                  </p>
                 </div>
               )}
             </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <Select label="Rule Violation" {...register('ruleViolation')}>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </Select>
+            {accounts?.length > 0 && (
+              <Select label="Account" {...register('accountId')}>
+                <option value="">Select account…</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </Select>
+            )}
           </div>
-        )}
+          {ruleViolation === 'Yes' && (
+            <Input
+              label="Violation description"
+              placeholder="Describe the rule you violated…"
+              {...register('violationDescription')}
+            />
+          )}
+          <label className="flex items-center gap-2.5 bg-surface2 border border-border rounded-xl px-3 py-2.5 cursor-pointer">
+            <input type="checkbox" className="w-4 h-4 accent-accent" {...register('isPublic')} />
+            <div>
+              <p className="text-sm text-primary">Share on Fabian's Trades</p>
+              <p className="text-xs text-secondary">Make this trade visible on the public trades page</p>
+            </div>
+          </label>
+          <div>
+            <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">What went well</label>
+            <textarea rows={2} className="w-full bg-surface2 border border-border rounded-lg text-sm text-primary placeholder-secondary/60 px-3 py-2.5 resize-none focus:outline-none focus:border-accent/60" placeholder="What worked in this trade…" {...register('wentWell')} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">To improve</label>
+            <textarea rows={2} className="w-full bg-surface2 border border-border rounded-lg text-sm text-primary placeholder-secondary/60 px-3 py-2.5 resize-none focus:outline-none focus:border-accent/60" placeholder="What you would do differently…" {...register('toImprove')} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-1.5">Notes</label>
+            <textarea rows={2} className="w-full bg-surface2 border border-border rounded-lg text-sm text-primary placeholder-secondary/60 px-3 py-2.5 resize-none focus:outline-none focus:border-accent/60" placeholder="Any additional notes…" {...register('notes')} />
+          </div>
+        </div>
 
-        {/* Navigation */}
-        <div className="flex gap-3 mt-6 pt-4 border-t border-border">
-          {step > 1 && (
-            <Button type="button" variant="secondary" onClick={() => setStep((s) => s - 1)}>
-              Back
-            </Button>
-          )}
-          {step < 3 ? (
-            <Button type="button" className="flex-1" onClick={nextStep}>
-              Continue
-            </Button>
-          ) : (
-            <Button type="submit" className="flex-1" loading={createTrade.isPending}>
-              Log Trade
-            </Button>
-          )}
+        {/* Submit */}
+        <div className="flex gap-3 pt-4 border-t border-border">
+          <Button type="button" variant="secondary" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button type="submit" className="flex-1" loading={createTrade.isPending}>
+            Log Trade
+          </Button>
         </div>
       </form>
     </Modal>
