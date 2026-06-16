@@ -15,6 +15,7 @@ import {
   SMTDivergenceDiagram,
   PremiumDiscountDiagram,
 } from './diagrams'
+import { NQRiskCalculator, SessionClock, TradingViewIndicatorCard } from './tools'
 
 const LESSON_DIAGRAMS = {
   'p1-l1': MarketStructureDiagram,
@@ -23,6 +24,12 @@ const LESSON_DIAGRAMS = {
   'p2-l5': IFVGDiagram,
   'p2-l6': SMTDivergenceDiagram,
   'p2-l7': PremiumDiscountDiagram,
+}
+
+const LESSON_TOOLS = {
+  'p6-l1': NQRiskCalculator,
+  'p6-l2': TradingViewIndicatorCard,
+  'p6-l3': SessionClock,
 }
 
 // ─── Content ────────────────────────────────────────────────────────────────
@@ -597,6 +604,65 @@ This specificity is your edge. Vague entries lead to vague results. The IFVG giv
           {
             heading: 'Quick Summary',
             body: `• IFVG = an FVG that has been inverted by a body close through it.\n• Clean candle BODY close rule: body must close through the FVG. Wicks don't count.\n• Entry: when price returns to the IFVG zone from the appropriate side.\n• Use 1min or 2min charts for IFVG identification.\n• IFVG must align with daily bias + 2 confirmations to be a valid trade.\n• IFVG from the current session only — old IFVGs have diminishing reliability.`,
+          },
+        ],
+      },
+      {
+        id: 'p2-l5b',
+        title: 'Liquidity Fair Value Gap (LFVG)',
+        readTime: '6 min',
+        sections: [
+          {
+            heading: 'Explanation',
+            body: `A Liquidity Fair Value Gap (LFVG) is one of the highest-conviction entry zones in the TradeEdge Method. It forms when a liquidity sweep and a Fair Value Gap occur at the exact same price level — creating a dual-confluence zone that institutional traders actively defend.
+
+**How an LFVG forms:**
+1. Price sweeps a BSL or SSL level (takes out stop orders above a high or below a low)
+2. The sweeping candle is large and displaces rapidly — leaving a Fair Value Gap in its wake
+3. The gap sits directly at or just beyond the liquidity level that was swept
+4. This means the zone has two reasons to hold on a retest: the swept liquidity AND the imbalance
+
+**Bullish LFVG (for longs):**
+- Price drops below a swing low (SSL sweep)
+- The sweeping candle leaves a bullish FVG at the sweep level
+- Price then reverses aggressively upward
+- On a retracement back to the FVG, you are retesting both the swept SSL and the FVG simultaneously
+- Entry: as price enters the FVG zone from above on the retracement
+
+**Bearish LFVG (for shorts):**
+- Price pushes above a swing high (BSL sweep)
+- The sweeping candle leaves a bearish FVG at the sweep level
+- Price reverses aggressively downward
+- On a retracement back to the FVG, you are retesting both the swept BSL and the FVG simultaneously
+- Entry: as price enters the FVG zone from below on the retracement
+
+**Why the LFVG is stronger than a standalone FVG:**
+A regular FVG is an imbalance — price wants to fill it. An LFVG has that same imbalance PLUS a liquidity event at the same location. The stop orders that were triggered by the sweep have now provided exit liquidity for institutional sellers (bearish) or buyers (bullish). The LFVG level is where institutions transacted — making it a magnet for price on any retracement.
+
+**LFVG vs IFVG:**
+- IFVG: An FVG that has been fully inverted (a candle body closed through it) — used as the primary entry trigger
+- LFVG: An FVG formed AT a liquidity sweep — used as both an entry zone AND a confirmation of the sweep's significance
+- An LFVG can become an IFVG if price subsequently closes a body back through it`,
+          },
+          {
+            heading: 'Why It Matters',
+            body: `The LFVG is one of the cleanest setups in the TradeEdge system because it resolves the "is this sweep real?" question. When price sweeps liquidity AND leaves an FVG at the sweep point, you have structural evidence — not just price reaching a level, but price creating an imbalance there.
+
+This is what separates random sweeps (which happen constantly) from meaningful ones. A sweep with no FVG may be noise. A sweep that creates an LFVG has institutional fingerprints on it.`,
+          },
+          {
+            heading: 'Common Mistakes',
+            body: `**Confusing an LFVG with any FVG near a swing level.** The FVG must be created BY the sweep candle — not a pre-existing FVG that happens to be near a swing. Timing is everything.
+
+**Entering before the retracement.** After the LFVG forms, wait for price to pull back to the gap zone. Do not chase the move away from the LFVG.
+
+**Using the LFVG without confirming the body-close rule.** The same rule applies as with all FVGs — if only a wick enters the LFVG on the retracement (rather than a body close), it is a weaker entry. Wait for body confirmation where possible.
+
+**Not counting the liquidity sweep as a confirmation.** If an LFVG is your entry zone, the sweep that created it is Confirmation 1 (Liquidity Sweep). You still need Confirmation 2.`,
+          },
+          {
+            heading: 'Quick Summary',
+            body: `• LFVG = FVG created at the exact point of a liquidity sweep.\n• Stronger than a standalone FVG because it has two confluences: swept liquidity + imbalance.\n• Bullish LFVG: SSL sweep → FVG left at low → retest from above = entry.\n• Bearish LFVG: BSL sweep → FVG left at high → retest from below = entry.\n• The sweep itself counts as Confirmation 1 — still need a second confirmation.\n• The LFVG can become an IFVG if price body-closes back through the gap.`,
           },
         ],
       },
@@ -1511,6 +1577,74 @@ Traders trade demo for 2 weeks, have a few good days, and go straight to live. T
       },
     ],
   },
+  {
+    id: 'p6',
+    part: 6,
+    title: 'Tools',
+    subtitle: 'Calculators and live resources',
+    color: 'text-accent',
+    bg: 'bg-accent/10 border-accent/20',
+    dot: 'bg-accent',
+    lessons: [
+      {
+        id: 'p6-l1',
+        title: 'NQ / ES Risk Calculator',
+        readTime: '1 min',
+        sections: [
+          {
+            heading: 'How to use',
+            body: `Enter your account size, risk percentage, and stop loss distance in points. The calculator instantly shows how many contracts you can trade across MNQ, NQ, MES, and ES — so you never have to do the maths in the middle of a live session.
+
+**Point values (per contract):**
+- MNQ (Micro Nasdaq): 1 point = $2
+- NQ (Nasdaq full): 1 point = $20
+- MES (Micro S&P): 1 point = $5
+- ES (S&P full): 1 point = $50
+
+**Recommendation:** Start each session by entering your current account balance and your planned stop distance. Lock in your contract count before the killzone opens — don't recalculate under pressure.`,
+          },
+        ],
+      },
+      {
+        id: 'p6-l2',
+        title: 'TradingView Killzone Indicator',
+        readTime: '2 min',
+        sections: [
+          {
+            heading: 'About this indicator',
+            body: `The ICT Killzones & Pivots indicator by TFO is the recommended chart tool for the TradeEdge Method. It overlays the London and NY killzone windows directly on your chart and draws key pivot levels automatically.
+
+**Why this specific indicator:**
+- Free to use — no subscription required
+- Accurate killzone shading for London (02:00–05:00 EST) and NY (08:30–11:00 EST)
+- Draws previous day/week/month highs and lows (your primary liquidity targets)
+- Session open lines help you spot the midnight open and Asian range boundaries
+- Actively maintained with regular updates
+
+Add it to your chart once and it handles the sessions, pivots, and open levels automatically — reducing the manual level-marking work before each session.`,
+          },
+        ],
+      },
+      {
+        id: 'p6-l3',
+        title: 'Live Session Clock',
+        readTime: '1 min',
+        sections: [
+          {
+            heading: 'How to use',
+            body: `The session clock shows the current time in EST and tells you exactly where you are relative to the London and NY killzones. If a killzone is active it shows a live indicator. If you are in off-hours it counts down to the next killzone opening.
+
+**Use this to:**
+- Quickly check if you are inside a valid killzone before taking any trade
+- Plan your pre-session routine around the countdown timer
+- Avoid the common mistake of trading in dead hours when the clock shows you are off-session
+
+The clock updates every second and accounts for daylight saving time automatically.`,
+          },
+        ],
+      },
+    ],
+  },
 ]
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -1579,6 +1713,10 @@ function LessonView({ lesson, onBack }) {
       {LESSON_DIAGRAMS[lesson.id] && (() => {
         const Diagram = LESSON_DIAGRAMS[lesson.id]
         return <Diagram />
+      })()}
+      {LESSON_TOOLS[lesson.id] && (() => {
+        const Tool = LESSON_TOOLS[lesson.id]
+        return <Tool />
       })()}
 
       <div className="space-y-3">
@@ -1668,7 +1806,7 @@ export default function LearnPage() {
             <GraduationCap className="w-5 h-5 text-accent" />
             The TradeEdge Method
           </h1>
-          <p className="text-sm text-secondary mt-0.5">{totalLessons} lessons across 5 parts, from foundations to full strategy</p>
+          <p className="text-sm text-secondary mt-0.5">{totalLessons} lessons across 6 parts — from foundations to tools</p>
         </div>
 
         <div className="bg-surface border border-border rounded-2xl p-10 text-center">
@@ -1698,7 +1836,7 @@ export default function LearnPage() {
             <GraduationCap className="w-5 h-5 text-accent" />
             The TradeEdge Method
           </h1>
-          <p className="text-sm text-secondary mt-0.5">{totalLessons} lessons across 5 parts, from foundations to full strategy</p>
+          <p className="text-sm text-secondary mt-0.5">{totalLessons} lessons across 6 parts — from foundations to tools</p>
         </div>
         <button
           onClick={() => setSidebarOpen(o => !o)}
