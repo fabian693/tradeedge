@@ -415,11 +415,11 @@ export function LogTradeModal({ open, onClose, accounts, onLogged }) {
                 variant="secondary"
                 size="sm"
                 className="w-full"
-                onClick={handleAnalyze}
-                loading={analyzeScreenshot.isPending}
+                onClick={undefined}
+                disabled
                 leftIcon={<Sparkles className="w-3.5 h-3.5" />}
               >
-                Analyze with AI & prefill
+                Analyze with AI & prefill — Coming Soon
               </Button>
               <p className="text-xs text-secondary/60">
                 The screenshot is saved with this trade either way.
