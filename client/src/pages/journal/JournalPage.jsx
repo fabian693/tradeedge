@@ -294,7 +294,7 @@ function TradeDetail({ trade, onRate }) {
 }
 
 // ---- Log Trade Modal (single step) ----
-function LogTradeModal({ open, onClose, accounts, onLogged }) {
+export function LogTradeModal({ open, onClose, accounts, onLogged }) {
   const [screenshot, setScreenshot] = useState(null)
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef(null)

@@ -14,6 +14,7 @@ import { useTrades } from '../hooks/useTrades'
 import { useAnalyticsSummary, useEquityCurve } from '../hooks/useAnalytics'
 import { useTodayCheckin } from '../hooks/usePsychology'
 import { useAccounts } from '../hooks/useAccounts'
+import { LogTradeModal } from './journal/JournalPage'
 import { Card, CardHeader, CardTitle } from '../components/shared/Card'
 import { StatCard } from '../components/shared/StatCard'
 import { Badge } from '../components/shared/Badge'
@@ -139,6 +140,7 @@ const PERIODS = ['7d', '30d', '90d', 'All']
 export default function DashboardPage() {
   const { user } = useAuth()
   const [period, setPeriod] = useState('30d')
+  const [showLogModal, setShowLogModal] = useState(false)
 
   const { data: checkin }                       = useTodayCheckin()
   const { data: summary, isLoading: sLoading }  = useAnalyticsSummary(null, period)
@@ -182,9 +184,7 @@ export default function DashboardPage() {
             {format(new Date(), 'EEEE, MMMM d')} · Here's your trading overview
           </p>
         </div>
-        <Link to="/journal/new">
-          <Button leftIcon={<Plus className="w-4 h-4" />}>Log Trade</Button>
-        </Link>
+        <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => setShowLogModal(true)}>Log Trade</Button>
       </div>
 
       {/* GO/NO-GO banner */}
@@ -301,9 +301,7 @@ export default function DashboardPage() {
 
       {/* Quick actions (mobile) */}
       <div className="flex gap-3 lg:hidden">
-        <Link to="/journal/new" className="flex-1">
-          <Button className="w-full" leftIcon={<Plus className="w-4 h-4" />}>Log Trade</Button>
-        </Link>
+        <Button className="w-full flex-1" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setShowLogModal(true)}>Log Trade</Button>
         <Link to="/psychology" className="flex-1">
           <Button variant="secondary" className="w-full" leftIcon={<Brain className="w-4 h-4" />}>Check-in</Button>
         </Link>
@@ -376,6 +374,13 @@ export default function DashboardPage() {
           </div>
         )}
       </Card>
+
+      <LogTradeModal
+        open={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        accounts={accounts ?? []}
+        onLogged={() => setShowLogModal(false)}
+      />
     </div>
   )
 }
