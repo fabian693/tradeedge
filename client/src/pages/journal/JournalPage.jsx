@@ -120,6 +120,7 @@ function mapFormToApiPayload(values) {
     session: SESSION_TO_API[values.session] ?? values.session,
     direction: DIRECTION_TO_API[values.direction] ?? values.direction,
     dailyBias: BIAS_TO_API[values.dailyBias] ?? values.dailyBias,
+    setupGrade: 'A',
     ifvgTimeframe: values.ifvgTimeframe === 'None' ? undefined : (IFVG_TO_API[values.ifvgTimeframe] ?? values.ifvgTimeframe),
     confirmation1: values.confirmations?.[0] ? (CONFIRM_TO_API[values.confirmations[0]] ?? values.confirmations[0]) : undefined,
     confirmation2: values.confirmations?.[1] ? (CONFIRM_TO_API[values.confirmations[1]] ?? values.confirmations[1]) : undefined,
