@@ -333,6 +333,8 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
   const direction = watch('direction')
   const contracts = watch('contracts')
   const ruleViolation = watch('ruleViolation')
+  const ifvgTimeframe = watch('ifvgTimeframe')
+  const ifvgSelected = ifvgTimeframe && ifvgTimeframe !== 'None'
 
   const rrTarget = calcRR(entry, sl, tp)
   const rrAchieved = calcSignedRR(entry, sl, exit, direction)
@@ -501,18 +503,33 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
                         {c}
                       </button>
                     ))}
+                    {/* IFVG chip — toggles the ifvgTimeframe field */}
+                    <button
+                      type="button"
+                      onClick={() => setValue('ifvgTimeframe', ifvgSelected ? 'None' : '1min')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                        ifvgSelected
+                          ? 'bg-accent/15 border-accent text-accent'
+                          : 'bg-surface2 border-border text-secondary hover:border-accent/50 hover:text-primary'
+                      }`}
+                    >
+                      IFVG
+                    </button>
                   </div>
                 )
               }}
             />
+            {ifvgSelected && (
+              <div className="mt-3">
+                <Select label="IFVG Timeframe" {...register('ifvgTimeframe')}>
+                  <option value="1min">1 min</option>
+                  <option value="2min">2 min</option>
+                  <option value="5min">5 min</option>
+                  <option value="15min">15 min</option>
+                </Select>
+              </div>
+            )}
           </div>
-          <Select label="IFVG Timeframe (optional)" {...register('ifvgTimeframe')}>
-            <option value="None">None</option>
-            <option value="1min">1 min</option>
-            <option value="2min">2 min</option>
-            <option value="5min">5 min</option>
-            <option value="15min">15 min</option>
-          </Select>
           <div className="grid grid-cols-3 gap-4">
             <Input label="Entry Price" type="number" step="0.25" error={errors.entryPrice?.message} {...register('entryPrice')} />
             <Input label="Stop Loss" type="number" step="0.25" error={errors.stopLoss?.message} {...register('stopLoss')} />
