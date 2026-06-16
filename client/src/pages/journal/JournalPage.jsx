@@ -39,9 +39,7 @@ const tradeSchema = z.object({
   dailyBias: z.enum(['Bullish', 'Bearish']),
   killzoneConfirmed: z.enum(['Yes', 'No']),
   ifvgTimeframe: z.enum(['None', '1min', '2min', '5min', '15min']),
-  setupGrade: z.enum(['A+', 'A', 'B']),
-  confirmation1: z.enum(['None', 'Liquidity Sweep', 'SMT Divergence', 'FVG Alignment']),
-  confirmation2: z.enum(['None', 'Liquidity Sweep', 'SMT Divergence', 'FVG Alignment']),
+  confirmations: z.array(z.enum(['Liquidity Sweep', 'SMT Divergence', 'FVG Alignment'])).optional(),
   entryPrice: z.coerce.number(),
   stopLoss: z.coerce.number(),
   stopLossType: z.enum(['Aggressive', 'Safe']),
@@ -123,9 +121,8 @@ function mapFormToApiPayload(values) {
     direction: DIRECTION_TO_API[values.direction] ?? values.direction,
     dailyBias: BIAS_TO_API[values.dailyBias] ?? values.dailyBias,
     ifvgTimeframe: values.ifvgTimeframe === 'None' ? undefined : (IFVG_TO_API[values.ifvgTimeframe] ?? values.ifvgTimeframe),
-    setupGrade: SETUP_TO_API[values.setupGrade] ?? values.setupGrade,
-    confirmation1: values.confirmation1 === 'None' ? undefined : (CONFIRM_TO_API[values.confirmation1] ?? values.confirmation1),
-    confirmation2: values.confirmation2 === 'None' ? undefined : (CONFIRM_TO_API[values.confirmation2] ?? values.confirmation2),
+    confirmation1: values.confirmations?.[0] ? (CONFIRM_TO_API[values.confirmations[0]] ?? values.confirmations[0]) : undefined,
+    confirmation2: values.confirmations?.[1] ? (CONFIRM_TO_API[values.confirmations[1]] ?? values.confirmations[1]) : undefined,
     entryPrice: values.entryPrice,
     slPrice: values.stopLoss,
     slType: SLTYPE_TO_API[values.stopLossType] ?? values.stopLossType,
@@ -313,8 +310,8 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
     resolver: zodResolver(tradeSchema),
     defaultValues: {
       market: 'NQ', session: 'NY', direction: 'Long', dailyBias: 'Bullish',
-      killzoneConfirmed: 'Yes', ifvgTimeframe: 'None', setupGrade: 'A',
-      confirmation1: 'None', confirmation2: 'None',
+      killzoneConfirmed: 'Yes', ifvgTimeframe: 'None',
+      confirmations: [],
       stopLossType: 'Safe', result: 'Win', ruleViolation: 'No',
       contracts: 1,
       isPublic: false,
@@ -475,36 +472,47 @@ function LogTradeModal({ open, onClose, accounts, onLogged }) {
           </Select>
         </div>
 
-        {/* Setup */}
+        {/* Confirmation */}
         <div className="space-y-4 pt-2 border-t border-border">
-          <div className="grid grid-cols-2 gap-4 pt-4">
-            <Select label="Setup Grade" {...register('setupGrade')}>
-              <option value="A+">A+</option>
-              <option value="A">A</option>
-              <option value="B">B</option>
-            </Select>
-            <Select label="IFVG Confirmation (optional)" {...register('ifvgTimeframe')}>
-              <option value="None">None</option>
-              <option value="1min">1 min</option>
-              <option value="2min">2 min</option>
-              <option value="5min">5 min</option>
-              <option value="15min">15 min</option>
-            </Select>
+          <div className="pt-4">
+            <label className="text-xs font-medium text-secondary uppercase tracking-wider block mb-2">Confirmation (optional — pick all that apply)</label>
+            <Controller
+              name="confirmations"
+              control={control}
+              render={({ field }) => {
+                const selected = field.value ?? []
+                const toggle = (c) => {
+                  if (selected.includes(c)) field.onChange(selected.filter((x) => x !== c))
+                  else field.onChange([...selected, c])
+                }
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {['Liquidity Sweep', 'SMT Divergence', 'FVG Alignment'].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => toggle(c)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                          selected.includes(c)
+                            ? 'bg-accent/15 border-accent text-accent'
+                            : 'bg-surface2 border-border text-secondary hover:border-accent/50 hover:text-primary'
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )
+              }}
+            />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Select label="Confirmation 1 (optional)" {...register('confirmation1')}>
-              <option value="None">None</option>
-              <option value="Liquidity Sweep">Liquidity Sweep</option>
-              <option value="SMT Divergence">SMT Divergence</option>
-              <option value="FVG Alignment">FVG Alignment</option>
-            </Select>
-            <Select label="Confirmation 2 (optional)" {...register('confirmation2')}>
-              <option value="None">None</option>
-              <option value="Liquidity Sweep">Liquidity Sweep</option>
-              <option value="SMT Divergence">SMT Divergence</option>
-              <option value="FVG Alignment">FVG Alignment</option>
-            </Select>
-          </div>
+          <Select label="IFVG Timeframe (optional)" {...register('ifvgTimeframe')}>
+            <option value="None">None</option>
+            <option value="1min">1 min</option>
+            <option value="2min">2 min</option>
+            <option value="5min">5 min</option>
+            <option value="15min">15 min</option>
+          </Select>
           <div className="grid grid-cols-3 gap-4">
             <Input label="Entry Price" type="number" step="0.25" error={errors.entryPrice?.message} {...register('entryPrice')} />
             <Input label="Stop Loss" type="number" step="0.25" error={errors.stopLoss?.message} {...register('stopLoss')} />
@@ -927,6 +935,9 @@ export default function JournalPage() {
         <div className="flex items-center gap-2">
           <Button variant="secondary" leftIcon={<FileUp className="w-4 h-4" />} onClick={() => setShowImportModal(true)}>
             Import CSV
+          </Button>
+          <Button variant="secondary" leftIcon={<Image className="w-4 h-4" />} onClick={() => setShowModal(true)}>
+            Upload Screenshot
           </Button>
           <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => setShowModal(true)}>
             Log Trade
